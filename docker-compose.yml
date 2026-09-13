@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pushoow
+      POSTGRES_PASSWORD: pushoow
+      POSTGRES_DB: pushoow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pushoow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pushoow -d pushoow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pushoow_pg:
