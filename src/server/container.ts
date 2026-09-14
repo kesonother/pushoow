@@ -122,6 +122,8 @@ import {
 } from "@/db/repositories/public-api-repo";
 import { createBillingService } from "@/domain/billing/service";
 import { createSupportService } from "@/domain/support/service";
+import { createMobileService } from "@/domain/mobile/service";
+import { unconfiguredMobilePush } from "@/integrations/push/unconfigured";
 import {
   createDrizzleCancellationRepository,
   createDrizzleInvoiceRepository,
@@ -139,6 +141,7 @@ import {
   createDrizzleTicketEventRepository,
   createDrizzleTicketMessageRepository,
 } from "@/db/repositories/support-repo";
+import { createDrizzleMobileDeviceRepository } from "@/db/repositories/mobile-repo";
 import {
   createDrizzleAnalyticsPlanRepository,
   createDrizzleAttributionRepository,
@@ -479,6 +482,44 @@ export function getServices() {
     secret,
     enqueue: jobs.enqueue,
   });
+  const analytics = createAnalyticsService({
+    events,
+    calendars,
+    registrations: eventRegistrations,
+    orders,
+    followers,
+    payments: checkoutPayments,
+    refunds: paymentRefunds,
+    issuedTickets,
+    records: createDrizzleCheckInRecordRepository(db),
+    passes: createDrizzleCheckInPassRepository(db),
+    deliveries,
+    attributions: createDrizzleAttributionRepository(db),
+    pageViews: createDrizzlePageViewRepository(db),
+    snapshots: createDrizzleSnapshotRepository(db),
+    plans: createDrizzleAnalyticsPlanRepository(db),
+    entitlements,
+    secret,
+    enqueueRefresh: async (input) => {
+      await jobs.enqueue({
+        type: "report.generate",
+        payload: input,
+        idempotencyKey: `analytics:${input.eventId ?? input.organizationId}:${Math.floor(Date.now() / 60_000)}`,
+      });
+    },
+  });
+  const mobile = createMobileService({
+    devices: createDrizzleMobileDeviceRepository(db),
+    home: {
+      attendeeHome: (userId, email) => analytics.attendeeHome(userId, email),
+    },
+    events,
+    calendars,
+    push: {
+      apns: unconfiguredMobilePush("apns"),
+      fcm: unconfiguredMobilePush("fcm"),
+    },
+  });
 
   return {
     db,
@@ -638,32 +679,7 @@ export function getServices() {
         });
       },
     }),
-    analytics: createAnalyticsService({
-      events,
-      calendars,
-      registrations: eventRegistrations,
-      orders,
-      followers,
-      payments: checkoutPayments,
-      refunds: paymentRefunds,
-      issuedTickets,
-      records: createDrizzleCheckInRecordRepository(db),
-      passes: createDrizzleCheckInPassRepository(db),
-      deliveries,
-      attributions: createDrizzleAttributionRepository(db),
-      pageViews: createDrizzlePageViewRepository(db),
-      snapshots: createDrizzleSnapshotRepository(db),
-      plans: createDrizzleAnalyticsPlanRepository(db),
-      entitlements,
-      secret,
-      enqueueRefresh: async (input) => {
-        await jobs.enqueue({
-          type: "report.generate",
-          payload: input,
-          idempotencyKey: `analytics:${input.eventId ?? input.organizationId}:${Math.floor(Date.now() / 60_000)}`,
-        });
-      },
-    }),
+    analytics,
     calendarRepo: calendars,
     eventRepo: events,
     eventRegistrations,
@@ -674,5 +690,6 @@ export function getServices() {
     publicApi,
     billing,
     support,
+    mobile,
   };
 }

@@ -17,3 +17,4 @@ export * from "@/db/schema/integrations";
 export * from "@/db/schema/public-api";
 export * from "@/db/schema/billing";
 export * from "@/db/schema/support";
+export * from "@/db/schema/mobile";
