@@ -8,7 +8,11 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { user } from "@/db/schema/auth";
-import { organization, organizationRoleEnum } from "@/db/schema/organizations";
+import {
+  organization,
+  organizationCustomRole,
+  organizationRoleEnum,
+} from "@/db/schema/organizations";
 
 export const attendeeVisibilityEnum = pgEnum("attendee_visibility", [
   "private",
@@ -20,6 +24,11 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
   "pending",
   "accepted",
   "revoked",
+]);
+
+export const organizationDomainKindEnum = pgEnum("organization_domain_kind", [
+  "email",
+  "site",
 ]);
 
 export const ssoProtocolEnum = pgEnum("sso_protocol", ["saml", "oidc"]);
@@ -68,6 +77,10 @@ export const attendeeProfile = pgTable("attendee_profile", {
   website: text("website"),
   linkedin: text("linkedin"),
   visibility: attendeeVisibilityEnum("visibility").notNull().default("private"),
+  appearOnRoster: boolean("appear_on_roster").notNull().default(false),
+  showAvatar: boolean("show_avatar").notNull().default(false),
+  showBio: boolean("show_bio").notNull().default(false),
+  showSocial: boolean("show_social").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
 });
@@ -104,6 +117,9 @@ export const organizationInvitation = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
     role: organizationRoleEnum("role").notNull(),
+    customRoleId: text("custom_role_id").references(() => organizationCustomRole.id, {
+      onDelete: "set null",
+    }),
     tokenHash: text("token_hash").notNull(),
     invitedByUserId: text("invited_by_user_id")
       .notNull()
@@ -133,6 +149,7 @@ export const organizationDomain = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     domain: text("domain").notNull(),
+    kind: organizationDomainKindEnum("kind").notNull().default("email"),
     tokenHash: text("token_hash").notNull(),
     verifiedAt: timestamp("verified_at", { withTimezone: true, mode: "date" }),
     autoJoin: boolean("auto_join").notNull().default(false),

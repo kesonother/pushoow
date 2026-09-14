@@ -113,8 +113,15 @@ export function createDrizzleOrderRepository(db: Database): OrderRepository {
       const [row] = await db.select().from(eventOrder).where(eq(eventOrder.id, id)).limit(1);
       return row ?? null;
     },
+    async findByIdempotencyKey(key) {
+      const [row] = await db.select().from(eventOrder).where(eq(eventOrder.idempotencyKey, key)).limit(1);
+      return row ?? null;
+    },
     async listByEvent(eventId) {
       return db.select().from(eventOrder).where(eq(eventOrder.eventId, eventId));
+    },
+    async listByOrganization(organizationId) {
+      return db.select().from(eventOrder).where(eq(eventOrder.organizationId, organizationId));
     },
     async listItems(orderId) {
       return db.select().from(eventOrderItem).where(eq(eventOrderItem.orderId, orderId));
@@ -132,7 +139,7 @@ export function createDrizzleRegistrationRepository(db: Database): EventRegistra
       const [row] = await db.insert(eventRegistration).values(registration).returning();
       return row;
     },
-    async createIfCapacity(registration, capacity, quantity) {
+    async createIfCapacity(registration, capacity, quantity, ticketLimits) {
       return db.transaction(async (tx) => {
         await tx.execute(sql`select ${event.id} from ${event} where ${event.id} = ${registration.eventId} for update`);
         const rows = await tx
@@ -147,6 +154,15 @@ export function createDrizzleRegistrationRepository(db: Database): EventRegistra
         const taken = rows.reduce((sum, row) => sum + row.quantity, 0);
         if (capacity != null && taken + quantity > capacity) {
           return { ok: false as const, taken };
+        }
+        for (const limit of ticketLimits ?? []) {
+          if (limit.capacity == null) continue;
+          const typeTaken = rows
+            .filter((row) => row.ticketTypeId === limit.ticketTypeId)
+            .reduce((sum, row) => sum + row.quantity, 0);
+          if (typeTaken + limit.quantity > limit.capacity) {
+            return { ok: false as const, taken: typeTaken };
+          }
         }
         const [row] = await tx.insert(eventRegistration).values(registration).returning();
         return { ok: true as const, registration: row };
@@ -174,6 +190,12 @@ export function createDrizzleRegistrationRepository(db: Database): EventRegistra
     },
     async listByEvent(eventId) {
       return db.select().from(eventRegistration).where(eq(eventRegistration.eventId, eventId));
+    },
+    async listByOrganization(organizationId) {
+      return db.select().from(eventRegistration).where(eq(eventRegistration.organizationId, organizationId));
+    },
+    async listByUser(userId) {
+      return db.select().from(eventRegistration).where(eq(eventRegistration.userId, userId));
     },
     async listAll() {
       return db.select().from(eventRegistration);

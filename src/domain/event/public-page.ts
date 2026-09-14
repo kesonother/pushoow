@@ -1,5 +1,12 @@
 import { NotFoundError } from "@/domain/errors";
-import type { EventContent, EventContentRepository, TicketType, TicketTypeRepository } from "@/domain/event/commerce-types";
+import type {
+  AddOn,
+  AddOnRepository,
+  EventContent,
+  EventContentRepository,
+  TicketType,
+  TicketTypeRepository,
+} from "@/domain/event/commerce-types";
 import { mapEmbedUrl, mapUrl } from "@/domain/event/geocoding";
 import { resolveLifecycle } from "@/domain/event/lifecycle";
 import { isListedEventStatus, type Event, type EventRepository } from "@/domain/event/types";
@@ -21,6 +28,7 @@ export type EventPublicView = {
   agenda: EventContent[];
   faqs: EventContent[];
   tickets: TicketType[];
+  addOns: AddOn[];
   related: Event[];
   remaining: number | null;
 };
@@ -30,6 +38,7 @@ export function createPublicEventService(deps: {
   calendars: CalendarRepository;
   content: EventContentRepository;
   tickets: TicketTypeRepository;
+  addOns?: AddOnRepository;
   countActive: (eventId: string) => Promise<number>;
   profiles?: ProfileRepository;
   clock?: Clock;
@@ -77,6 +86,7 @@ export function createPublicEventService(deps: {
       agenda: content.filter((item) => item.kind === "agenda"),
       faqs: content.filter((item) => item.kind === "faq"),
       tickets: await deps.tickets.listByEvent(event.id),
+      addOns: deps.addOns ? await deps.addOns.listByEvent(event.id) : [],
       related,
       remaining: event.capacity == null ? null : Math.max(0, event.capacity - taken),
     };

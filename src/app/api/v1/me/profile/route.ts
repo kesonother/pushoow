@@ -21,6 +21,10 @@ const profileSchema = z.object({
       website: z.string().url().nullable().optional(),
       linkedin: z.string().url().nullable().optional(),
       visibility: z.enum(ATTENDEE_VISIBILITIES).optional(),
+      appearOnRoster: z.boolean().optional(),
+      showAvatar: z.boolean().optional(),
+      showBio: z.boolean().optional(),
+      showSocial: z.boolean().optional(),
     })
     .optional(),
 });

@@ -12,7 +12,7 @@ export const GET = (request: Request, context: RouteContext) =>
     const services = getServices();
     const event = await services.eventRepo.findById(eventId);
     if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
-    await resolveActor(services.memberships, user!.id, event.organizationId);
+    await resolveActor(services.access, user!.id, event.organizationId);
     return jsonOk(await services.events.listOccurrences(eventId), { requestId });
   })(request);
 
@@ -23,7 +23,7 @@ export const POST = (request: Request, context: RouteContext) =>
     const services = getServices();
     const event = await services.eventRepo.findById(eventId);
     if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
-    const actor = await resolveActor(services.memberships, user!.id, event.organizationId);
+    const actor = await resolveActor(services.access, user!.id, event.organizationId);
     const rule = await services.events.setRecurrence(actor, eventId, {
       ...body,
       until: body.until ? new Date(body.until) : null,

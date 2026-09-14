@@ -32,6 +32,7 @@ export type CalendarFollowerRepository = {
     calendarId: string,
   ) => Promise<CalendarFollower | null>;
   listByCalendar: (calendarId: string) => Promise<CalendarFollower[]>;
+  listByUser?: (userId: string) => Promise<CalendarFollower[]>;
   countByCalendar: (calendarId: string) => Promise<number>;
   save: (follower: CalendarFollower) => Promise<CalendarFollower>;
   delete: (id: string) => Promise<void>;

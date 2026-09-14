@@ -12,7 +12,7 @@ export const GET = (request: Request, context: RouteContext) =>
     const { calendarId } = await context.params;
     const services = getServices();
     const actor = await resolveCalendarActor(
-      { memberships: services.memberships, calendars: services.calendarRepo },
+      { memberships: services.access, calendars: services.calendarRepo },
       user!.id,
       calendarId,
     );

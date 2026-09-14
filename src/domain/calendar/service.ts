@@ -41,10 +41,23 @@ export type CalendarWriteInput = {
   bannedWords?: string[];
 };
 
+export type CalendarQuota = {
+  used: number;
+  limit: number;
+  remaining: number;
+};
+
 export type CalendarServiceDeps = {
   calendars: CalendarRepository;
   slugChanges?: CalendarSlugChangeRepository;
   brandChecker?: BrandCheckAdapter;
+  limits?: {
+    forOrganization: (organizationId: string) => Promise<CalendarQuota>;
+  };
+  organizationBranding?: (organizationId: string) => Promise<{
+    logoUrl: string | null;
+    primaryColor: string | null;
+  } | null>;
   clock?: Clock;
   ids?: IdGenerator;
 };
@@ -69,10 +82,20 @@ export function createCalendarService(deps: CalendarServiceDeps) {
   const brand = deps.brandChecker ?? noopBrandChecker;
 
   async function createCalendar(actor: Actor, input: CalendarWriteInput & { name: string }) {
-    assertPermission(actor.role, "calendars:create");
+    assertPermission(actor, "calendars:create");
     const name = input.name.trim();
     if (name.length < 2) {
       throw new ValidationError("Calendar name is too short");
+    }
+
+    if (deps.limits) {
+      const quota = await deps.limits.forOrganization(actor.organizationId);
+      if (quota.remaining <= 0) {
+        throw new ValidationError("Calendar limit reached for this organization", {
+          used: quota.used,
+          limit: quota.limit,
+        });
+      }
     }
 
     const slug = await assertCalendarSlug(input.slug ?? name, brand);
@@ -83,6 +106,9 @@ export function createCalendarService(deps: CalendarServiceDeps) {
 
     const now = clock.now();
     const branding = defaultCalendarBranding();
+    const inherited = deps.organizationBranding
+      ? await deps.organizationBranding(actor.organizationId)
+      : null;
     return deps.calendars.create({
       id: ids.id(),
       organizationId: actor.organizationId,
@@ -97,8 +123,11 @@ export function createCalendarService(deps: CalendarServiceDeps) {
       bannedWords: normalizeBannedWords(input.bannedWords),
       feedToken: ids.id(),
       ...branding,
-      logoUrl: input.logoUrl ?? null,
-      primaryColor: normalizeColor(input.primaryColor),
+      logoUrl: input.logoUrl !== undefined ? input.logoUrl : (inherited?.logoUrl ?? null),
+      primaryColor:
+        input.primaryColor !== undefined
+          ? normalizeColor(input.primaryColor)
+          : inherited?.primaryColor ?? null,
       bannerUrl: input.bannerUrl ?? null,
       socialLink: input.socialLink ?? null,
       contactEmail: input.contactEmail?.trim().toLowerCase() || null,
@@ -112,13 +141,13 @@ export function createCalendarService(deps: CalendarServiceDeps) {
   }
 
   async function listCalendars(actor: Actor): Promise<Calendar[]> {
-    assertPermission(actor.role, "organization:read");
+    assertPermission(actor, "organization:read");
     const calendars = await deps.calendars.listByOrganization(actor.organizationId);
     return calendars.filter((calendar) => !calendar.deletedAt);
   }
 
   async function getCalendar(actor: Actor, calendarId: string): Promise<Calendar> {
-    assertPermission(actor.role, "organization:read");
+    assertPermission(actor, "organization:read");
     const calendar = await deps.calendars.findById(calendarId);
     assertSameTenant(calendar, actor.organizationId, "Calendar");
     return calendar as Calendar;
@@ -129,7 +158,7 @@ export function createCalendarService(deps: CalendarServiceDeps) {
     calendarId: string,
     input: CalendarWriteInput,
   ): Promise<Calendar> {
-    assertPermission(actor.role, "calendars:update");
+    assertPermission(actor, "calendars:update");
     const calendar = await getCalendar(actor, calendarId);
     let nextSlug = calendar.slug;
 
@@ -194,7 +223,7 @@ export function createCalendarService(deps: CalendarServiceDeps) {
   }
 
   async function deleteCalendar(actor: Actor, calendarId: string): Promise<Calendar> {
-    assertPermission(actor.role, "calendars:delete");
+    assertPermission(actor, "calendars:delete");
     const calendar = await getCalendar(actor, calendarId);
     return deps.calendars.update({
       ...calendar,

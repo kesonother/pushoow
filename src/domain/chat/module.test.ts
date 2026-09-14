@@ -79,6 +79,8 @@ async function setup(now = new Date("2026-09-13T18:00:00.000Z")) {
     quantity: 1,
     offeredUntil: null,
     waitlistPosition: null,
+    anonymous: false,
+    appearOnRoster: false,
     createdAt: now,
     updatedAt: now,
   });
@@ -217,6 +219,8 @@ describe("event chat archive", () => {
       quantity: 1,
       offeredUntil: null,
       waitlistPosition: null,
+      anonymous: false,
+      appearOnRoster: false,
       createdAt: now,
       updatedAt: now,
     });

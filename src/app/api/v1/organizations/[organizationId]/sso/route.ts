@@ -13,7 +13,7 @@ export const GET = (request: Request, context: RouteContext) =>
   withApi(async ({ user, requestId }) => {
     const { organizationId } = await context.params;
     const services = getServices();
-    await resolveActor(services.memberships, user!.id, organizationId, user!.emailVerified);
+    await resolveActor(services.access, user!.id, organizationId, user!.emailVerified);
     return jsonOk(
       {
         saml: { configured: unconfiguredSsoAdapter("saml").isConfigured() },
@@ -28,7 +28,7 @@ export const POST = (request: Request, context: RouteContext) =>
   withApi(async ({ user, url }) => {
     const { organizationId } = await context.params;
     const services = getServices();
-    await resolveActor(services.memberships, user!.id, organizationId, user!.emailVerified);
+    await resolveActor(services.access, user!.id, organizationId, user!.emailVerified);
     const protocol = url.searchParams.get("protocol") === "oidc" ? "oidc" : "saml";
     try {
       return Response.json(

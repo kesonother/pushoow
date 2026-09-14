@@ -3,6 +3,7 @@ import type { Actor } from "@/domain/rbac/permissions";
 import { assertPermission } from "@/domain/rbac/permissions";
 import { canAssignRole, canManageMember, type OrganizationRole } from "@/domain/rbac/roles";
 import type {
+  CustomRoleRepository,
   InvitationRepository,
   MembershipRepository,
   OrganizationInvitation,
@@ -19,6 +20,7 @@ export type MembershipServiceDeps = {
   members: MembershipRepository;
   invitations: InvitationRepository;
   users: UserDirectory;
+  customRoles?: CustomRoleRepository;
   clock?: Clock;
   ids?: IdGenerator;
 };
@@ -27,12 +29,22 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function actorCanAssign(actor: Actor, targetRole: OrganizationRole) {
+  if (actor.viaAgency) return true;
+  return canAssignRole(actor.role, targetRole);
+}
+
+function actorCanManage(actor: Actor, targetRole: OrganizationRole) {
+  if (actor.viaAgency) return true;
+  return canManageMember(actor.role, targetRole);
+}
+
 export function createMembershipService(deps: MembershipServiceDeps) {
   const clock = deps.clock ?? systemClock;
   const ids = deps.ids ?? cuidGenerator;
 
   async function listMembers(actor: Actor) {
-    assertPermission(actor.role, "members:read");
+    assertPermission(actor, "members:read");
     return deps.members.listByOrganization(actor.organizationId);
   }
 
@@ -41,18 +53,38 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     return members.filter((member) => member.role === "owner");
   }
 
+  async function assertCustomRole(actor: Actor, customRoleId: string) {
+    if (!deps.customRoles) {
+      throw new ValidationError("Custom roles are not available");
+    }
+    const role = await deps.customRoles.findById(customRoleId);
+    if (!role || role.organizationId !== actor.organizationId) {
+      throw new NotFoundError("CustomRole", customRoleId);
+    }
+    return role;
+  }
+
   async function invite(
     actor: Actor,
-    input: { email: string; role: OrganizationRole },
+    input: { email: string; role: OrganizationRole; customRoleId?: string | null },
   ): Promise<{ invitation: OrganizationInvitation; token: string }> {
-    assertPermission(actor.role, "members:invite");
-    if (!canAssignRole(actor.role, input.role)) {
+    assertPermission(actor, "members:invite");
+    if (!actorCanAssign(actor, input.role)) {
       throw new ForbiddenError("You cannot invite a member with that role");
     }
 
     const email = normalizeEmail(input.email);
     if (!email.includes("@")) {
       throw new ValidationError("A valid email is required");
+    }
+
+    let customRoleId: string | null = null;
+    if (input.role === "custom") {
+      if (!input.customRoleId) {
+        throw new ValidationError("A custom role is required");
+      }
+      await assertCustomRole(actor, input.customRoleId);
+      customRoleId = input.customRoleId;
     }
 
     const existingUser = await deps.users.findByEmail(email);
@@ -73,6 +105,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
       organizationId: actor.organizationId,
       email,
       role: input.role,
+      customRoleId,
       tokenHash: sha256(token),
       invitedByUserId: actor.userId,
       status: "pending",
@@ -120,6 +153,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
       organizationId: invitation.organizationId,
       userId: user.id,
       role: invitation.role,
+      customRoleId: invitation.customRoleId ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -139,9 +173,10 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     actor: Actor,
     targetUserId: string,
     role: OrganizationRole,
+    customRoleId?: string | null,
   ) {
-    assertPermission(actor.role, "members:update");
-    if (!canAssignRole(actor.role, role)) {
+    assertPermission(actor, "members:update");
+    if (!actorCanAssign(actor, role)) {
       throw new ForbiddenError("You cannot assign that role");
     }
 
@@ -152,7 +187,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     if (!target) {
       throw new NotFoundError("Member", targetUserId);
     }
-    if (!canManageMember(actor.role, target.role)) {
+    if (!actorCanManage(actor, target.role)) {
       throw new ForbiddenError("You cannot change this member's role");
     }
 
@@ -163,15 +198,25 @@ export function createMembershipService(deps: MembershipServiceDeps) {
       }
     }
 
+    let nextCustomRoleId: string | null = null;
+    if (role === "custom") {
+      if (!customRoleId) {
+        throw new ValidationError("A custom role is required");
+      }
+      await assertCustomRole(actor, customRoleId);
+      nextCustomRoleId = customRoleId;
+    }
+
     return deps.members.update({
       ...target,
       role,
+      customRoleId: nextCustomRoleId,
       updatedAt: clock.now(),
     });
   }
 
   async function removeMember(actor: Actor, targetUserId: string) {
-    assertPermission(actor.role, "members:remove");
+    assertPermission(actor, "members:remove");
     const target = await deps.members.findByUserAndOrganization(
       targetUserId,
       actor.organizationId,
@@ -179,7 +224,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     if (!target) {
       throw new NotFoundError("Member", targetUserId);
     }
-    if (!canManageMember(actor.role, target.role)) {
+    if (!actorCanManage(actor, target.role)) {
       throw new ForbiddenError("You cannot remove this member");
     }
     if (target.role === "owner") {
@@ -192,7 +237,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
   }
 
   async function revokeInvitation(actor: Actor, invitationId: string) {
-    assertPermission(actor.role, "members:invite");
+    assertPermission(actor, "members:invite");
     const invitation = await deps.invitations.findById(invitationId);
     if (!invitation || invitation.organizationId !== actor.organizationId) {
       throw new NotFoundError("Invitation", invitationId);

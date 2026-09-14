@@ -22,6 +22,7 @@ export function wizardLabels(t: Dictionary): Record<string, string> {
     customPin: t.event.customPin,
     cover: t.event.cover,
     registrationMode: t.event.registrationMode,
+    rosterMode: t.privacy.rosterMode,
     registrationPassword: t.event.registrationPassword,
     allowedDomains: t.event.allowedDomains,
     accessToken: t.event.accessToken,

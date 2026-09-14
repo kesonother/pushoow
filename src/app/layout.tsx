@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Calendar-first community events for tech, startup, and creator communities.",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { locale, dir, t } = await getI18n();
 
   return (

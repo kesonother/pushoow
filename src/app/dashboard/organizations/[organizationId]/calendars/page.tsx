@@ -4,7 +4,7 @@ import { getSession } from "@/auth/session";
 import { DomainError } from "@/domain/errors";
 import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
-import { resolveActor } from "@/api/authorize";
+import { requireFullDashboardActor } from "@/server/dashboard-access";
 import { Card } from "@/ui/card";
 import { CreateCalendarForm } from "@/ui/create-calendar-form";
 import { SiteHeader } from "@/ui/site-header";
@@ -23,7 +23,7 @@ export default async function OrganizationCalendarsPage({ params }: PageProps) {
   let calendars;
 
   try {
-    const actor = await resolveActor(services.memberships, session.user.id, organizationId);
+    const actor = await requireFullDashboardActor(services.access, session.user.id, organizationId);
     calendars = await services.calendars.listCalendars(actor);
   } catch (error) {
     if (error instanceof DomainError) redirect("/dashboard");
@@ -34,7 +34,12 @@ export default async function OrganizationCalendarsPage({ params }: PageProps) {
     <div className="flex min-h-full flex-col">
       <SiteHeader t={t} signedIn />
       <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.calendars}</h1>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.calendars}</h1>
+          <Link href={`/dashboard/organizations/${organizationId}/import`} className="text-sm underline">
+            {t.dashboard.importCsv}
+          </Link>
+        </div>
         <CreateCalendarForm
           organizationId={organizationId}
           labels={{ create: t.dashboard.createCalendar, name: t.dashboard.calendarName }}

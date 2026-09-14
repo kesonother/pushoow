@@ -20,6 +20,10 @@ export type AttendeeProfile = {
   website: string | null;
   linkedin: string | null;
   visibility: AttendeeVisibility;
+  appearOnRoster: boolean;
+  showAvatar: boolean;
+  showBio: boolean;
+  showSocial: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -147,6 +147,8 @@ describe("discovery marketplace", () => {
       quantity: 1,
       offeredUntil: null,
       waitlistPosition: null,
+      anonymous: false,
+      appearOnRoster: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -193,6 +195,8 @@ describe("discovery marketplace", () => {
           quantity: 1,
           offeredUntil: null,
           waitlistPosition: null,
+          anonymous: false,
+          appearOnRoster: false,
           createdAt: now,
           updatedAt: now,
         });

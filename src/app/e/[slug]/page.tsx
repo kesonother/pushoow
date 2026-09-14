@@ -9,6 +9,8 @@ import { CalendarFollowButton } from "@/ui/calendar-follow-button";
 import { Card } from "@/ui/card";
 import { EventChat } from "@/ui/event-chat";
 import { EventRegisterForm } from "@/ui/event-register-form";
+import { EventRoster } from "@/ui/event-roster";
+import { EventViewBeacon } from "@/ui/event-view-beacon";
 import { SiteHeader } from "@/ui/site-header";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -67,6 +69,7 @@ export default async function EventPublicPage({ params }: PageProps) {
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader t={t} signedIn={Boolean(session?.user)} />
+      <EventViewBeacon eventId={event.id} />
       <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
         {event.coverImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -99,6 +102,12 @@ export default async function EventPublicPage({ params }: PageProps) {
               priceCents: ticket.priceCents,
               currency: ticket.currency,
             }))}
+            addOns={view.addOns.map((addOn) => ({
+              id: addOn.id,
+              name: addOn.name,
+              priceCents: addOn.priceCents,
+              currency: addOn.currency,
+            }))}
             labels={{
               email: t.auth.email,
               submit: t.event.register,
@@ -107,9 +116,22 @@ export default async function EventPublicPage({ params }: PageProps) {
               token: t.event.accessToken,
               coupon: t.event.coupon,
               quantity: t.event.quantity,
+              anonymous: t.privacy.anonymousRsvp,
+              appearOnRoster: t.privacy.appearOnRoster,
+              captcha: t.privacy.captcha,
+              addOns: t.event.addOns,
+              ticketSubtotal: t.event.ticketSubtotal,
+              tax: t.event.tax,
+              platformFee: t.event.platformFee,
+              total: t.event.total,
+              quoteHint: t.event.quoteHint,
             }}
           />
         </Card>
+        <EventRoster
+          eventId={event.id}
+          labels={{ title: t.privacy.roster, hidden: t.privacy.rosterHidden }}
+        />
         {view.tickets.length > 0 ? (
           <section>
             <h2 className="mb-2 text-xl font-semibold">{t.event.tickets}</h2>

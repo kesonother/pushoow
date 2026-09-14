@@ -61,7 +61,15 @@ export function createDrizzleProfileRepository(db: Database): ProfileRepository 
         .from(attendeeProfile)
         .where(eq(attendeeProfile.userId, userId))
         .limit(1);
-      return row ?? null;
+      return row
+        ? {
+            ...row,
+            appearOnRoster: row.appearOnRoster ?? false,
+            showAvatar: row.showAvatar ?? false,
+            showBio: row.showBio ?? false,
+            showSocial: row.showSocial ?? false,
+          }
+        : null;
     },
     async upsertOrganizer(profile: OrganizerProfile) {
       const [row] = await db
@@ -94,6 +102,10 @@ export function createDrizzleProfileRepository(db: Database): ProfileRepository 
             website: profile.website,
             linkedin: profile.linkedin,
             visibility: profile.visibility,
+            appearOnRoster: profile.appearOnRoster,
+            showAvatar: profile.showAvatar,
+            showBio: profile.showBio,
+            showSocial: profile.showSocial,
             updatedAt: profile.updatedAt,
           },
         })
@@ -213,11 +225,26 @@ export function createDrizzleInvitationRepository(db: Database): InvitationRepos
   };
 }
 
+function mapDomain(row: typeof organizationDomain.$inferSelect): OrganizationDomain {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    domain: row.domain,
+    kind: row.kind === "site" ? "site" : "email",
+    tokenHash: row.tokenHash,
+    verifiedAt: row.verifiedAt,
+    autoJoin: row.autoJoin,
+    autoJoinRole: row.autoJoinRole as OrganizationRole,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export function createDrizzleDomainRepository(db: Database): DomainRepository {
   return {
     async create(domain) {
       const [row] = await db.insert(organizationDomain).values(domain).returning();
-      return row as OrganizationDomain;
+      return mapDomain(row);
     },
     async findByDomain(domain) {
       const [row] = await db
@@ -225,14 +252,14 @@ export function createDrizzleDomainRepository(db: Database): DomainRepository {
         .from(organizationDomain)
         .where(eq(organizationDomain.domain, domain))
         .limit(1);
-      return (row as OrganizationDomain | undefined) ?? null;
+      return row ? mapDomain(row) : null;
     },
     async listByOrganization(organizationId) {
       const rows = await db
         .select()
         .from(organizationDomain)
         .where(eq(organizationDomain.organizationId, organizationId));
-      return rows as OrganizationDomain[];
+      return rows.map(mapDomain);
     },
     async save(domain) {
       const [row] = await db
@@ -245,7 +272,7 @@ export function createDrizzleDomainRepository(db: Database): DomainRepository {
         })
         .where(eq(organizationDomain.id, domain.id))
         .returning();
-      return row as OrganizationDomain;
+      return mapDomain(row);
     },
   };
 }

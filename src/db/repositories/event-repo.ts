@@ -10,6 +10,7 @@ import type {
   EventVisibility,
   LocationKind,
   RegistrationMode,
+  RosterMode,
 } from "@/domain/event/types";
 
 function searchDocument(item: Pick<Event, "title" | "description" | "tags" | "city" | "country" | "venueName" | "venueAddress">) {
@@ -51,6 +52,7 @@ function mapEvent(row: typeof event.$inferSelect): Event {
     virtualProvider: row.virtualProvider,
     templateId: row.templateId,
     registrationMode: row.registrationMode as RegistrationMode,
+    rosterMode: (row.rosterMode as RosterMode | undefined) ?? "hidden",
     registrationPasswordHash: row.registrationPasswordHash,
     allowedEmailDomains: row.allowedEmailDomains ?? [],
     accessToken: row.accessToken,
@@ -104,6 +106,14 @@ export function createDrizzleEventRepository(db: Database): EventRepository {
       const rows = await db.select().from(event).where(and(...filters));
       return rows.map(mapEvent);
     },
+    async listByOrganization(organizationId, query?: EventListQuery) {
+      const filters = [eq(event.organizationId, organizationId), isNull(event.deletedAt)];
+      if (query?.status) filters.push(eq(event.status, query.status));
+      if (query?.from) filters.push(gte(event.startsAt, query.from));
+      if (query?.to) filters.push(lte(event.startsAt, query.to));
+      const rows = await db.select().from(event).where(and(...filters));
+      return rows.map(mapEvent);
+    },
     async listPublic(excludeId?: string) {
       const filters = [eq(event.visibility, "public"), isNull(event.deletedAt)];
       if (excludeId) filters.push(ne(event.id, excludeId));
@@ -143,6 +153,7 @@ export function createDrizzleEventRepository(db: Database): EventRepository {
           virtualProvider: item.virtualProvider,
           templateId: item.templateId,
           registrationMode: item.registrationMode,
+          rosterMode: item.rosterMode,
           registrationPasswordHash: item.registrationPasswordHash,
           allowedEmailDomains: item.allowedEmailDomains,
           accessToken: item.accessToken,

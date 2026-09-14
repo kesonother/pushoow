@@ -2,7 +2,11 @@ export const JOB_TYPES = [
   "email.send",
   "sms.send",
   "whatsapp.send",
+  "web_push.send",
+  "mobile_push.send",
   "reminder.dispatch",
+  "reminder.schedule",
+  "newsletter.send",
   "webhook.deliver",
   "export.generate",
   "report.generate",
@@ -11,6 +15,9 @@ export const JOB_TYPES = [
   "calendar.followers.notify",
   "waitlist.expire",
   "chat.archive",
+  "privacy.deletion.process",
+  "import.purge",
+  "audit.purge",
 ] as const;
 
 export type JobType = (typeof JOB_TYPES)[number];

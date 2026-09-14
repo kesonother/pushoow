@@ -20,7 +20,7 @@ export const POST = (request: Request, context: RouteContext) =>
     const event = await services.eventRepo.findById(eventId);
     if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
     const actor = await resolveActor(
-      services.memberships,
+      services.access,
       user!.id,
       event.organizationId,
       user!.emailVerified,

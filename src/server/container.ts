@@ -37,6 +37,9 @@ import {
   createSharedOrganizationLookup,
 } from "@/db/repositories/identity-repo";
 import {
+  createDrizzleAgencyClientRepository,
+  createDrizzleAuditRepository,
+  createDrizzleCustomRoleRepository,
   createDrizzleMembershipRepository,
   createDrizzleOrganizationRepository,
 } from "@/db/repositories/organization-repo";
@@ -59,18 +62,92 @@ import { createNominatimGeocoder } from "@/integrations/geocoding/nominatim";
 import { createMembershipService as createOrgMembershipService } from "@/domain/membership/service";
 import { createModerationService } from "@/domain/moderation/service";
 import { createOrganizationService } from "@/domain/organization/service";
+import { createAccessService } from "@/domain/access/service";
+import { createCustomRoleService } from "@/domain/custom-role/service";
+import { createAgencyService } from "@/domain/agency/service";
+import { createAuditService } from "@/domain/audit/service";
 import { createProfileService } from "@/domain/profile/service";
 import { createTokenService } from "@/domain/session/service";
 import { sendAuthEmail } from "@/auth/mailer";
 import { unconfiguredBrandChecker } from "@/integrations/brand/unconfigured";
-import { unconfiguredPaymentAdapter } from "@/integrations/payments/unconfigured";
+import { unconfiguredStripeConnect } from "@/integrations/payments/unconfigured";
+import { createStripeConnectAdapter } from "@/integrations/payments/stripe-connect";
+import { createStripeTaxPort } from "@/integrations/payments/stripe-tax";
+import { createPaymentService } from "@/domain/payments/service";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payments/fees";
+import {
+  createDrizzleCheckoutPaymentRepository,
+  createDrizzleConnectedAccountRepository,
+  createDrizzleIssuedTicketRepository,
+  createDrizzlePaymentRefundRepository,
+  createDrizzleStripeWebhookRepository,
+  createDrizzleTaxRecordRepository,
+} from "@/db/repositories/payment-repo";
+import { createNotificationService } from "@/domain/notification/service";
+import { createLogProvider } from "@/notifications/log-adapter";
+import {
+  createDrizzleNewsletterRepository,
+  createDrizzleNotificationDeliveryRepository,
+  createDrizzleNotificationPreferenceRepository,
+  createDrizzleNotificationSuppressionRepository,
+  createDrizzleNotificationTemplateRepository,
+  createDrizzleSmsConsentRepository,
+} from "@/db/repositories/notification-repo";
 import { createDrizzleJobRepository } from "@/jobs/job-repo";
 import { createJobQueue } from "@/jobs/queue";
+import { createHmacCaptchaVerifier } from "@/domain/privacy/captcha";
+import { createPrivacyService } from "@/domain/privacy/service";
+import { createCheckInService } from "@/domain/checkin/service";
+import { checkInRealtimeHub } from "@/domain/checkin/realtime";
+import {
+  createDrizzleCapacityAlertRepository,
+  createDrizzleCheckInPassRepository,
+  createDrizzleCheckInRecordRepository,
+} from "@/db/repositories/checkin-repo";
+import { createAnalyticsService } from "@/domain/analytics/service";
+import { createImportService } from "@/domain/import/service";
+import { createDrizzleImportRepository } from "@/db/repositories/import-repo";
+import { createIntegrationService } from "@/domain/integration/service";
+import {
+  createDrizzleIntegrationConnectionRepository,
+  createDrizzleIntegrationRefRepository,
+} from "@/db/repositories/integration-repo";
+import { createPublicApiService } from "@/domain/public-api/service";
+import {
+  createDrizzlePublicApiKeyRepository,
+  createDrizzlePublicOAuthClientRepository,
+  createDrizzlePublicOAuthCodeRepository,
+  createDrizzlePublicWebhookDeliveryRepository,
+  createDrizzlePublicWebhookEndpointRepository,
+} from "@/db/repositories/public-api-repo";
+import {
+  createDrizzleAnalyticsPlanRepository,
+  createDrizzleAttributionRepository,
+  createDrizzlePageViewRepository,
+  createDrizzleSnapshotRepository,
+} from "@/db/repositories/analytics-repo";
+import {
+  createDrizzleCcpaRepository,
+  createDrizzleConsentRepository,
+  createDrizzleDeletionRepository,
+  createDrizzlePrivacyAuditRepository,
+  createDrizzlePrivacySubjects,
+  createDrizzleProcessingRepository,
+} from "@/db/repositories/privacy-repo";
 
 export function getServices() {
   const db = getDb();
   const organizations = createDrizzleOrganizationRepository(db);
   const members = createDrizzleMembershipRepository(db);
+  const customRoles = createDrizzleCustomRoleRepository(db);
+  const agencyClients = createDrizzleAgencyClientRepository(db);
+  const auditLogs = createDrizzleAuditRepository(db);
+  const access = createAccessService({
+    members,
+    organizations,
+    customRoles,
+    agencyClients,
+  });
   const calendars = createDrizzleCalendarRepository(db);
   const slugChanges = createDrizzleCalendarSlugChangeRepository(db);
   const events = createDrizzleEventRepository(db);
@@ -100,6 +177,106 @@ export function getServices() {
   const calendarMembers = createDrizzleCalendarMemberRepository(db);
   const secret = getEnv().BETTER_AUTH_SECRET ?? "dev-only-change-me-token-secret-32";
   const jobs = createJobQueue({ jobs: createDrizzleJobRepository(db) });
+  const deliveries = createDrizzleNotificationDeliveryRepository(db);
+  const notifications = createNotificationService({
+    providers: {
+      email: createLogProvider("email"),
+      sms: createLogProvider("sms"),
+      whatsapp: createLogProvider("whatsapp"),
+      web_push: createLogProvider("web_push"),
+      mobile_push: createLogProvider("mobile_push"),
+    },
+    preferences: createDrizzleNotificationPreferenceRepository(db),
+    suppressions: createDrizzleNotificationSuppressionRepository(db),
+    templates: createDrizzleNotificationTemplateRepository(db),
+    deliveries,
+    smsConsents: createDrizzleSmsConsentRepository(db),
+    newsletters: createDrizzleNewsletterRepository(db),
+    enqueue: jobs.enqueue,
+    unsubscribeSecret: secret,
+    appUrl: getEnv().APP_URL ?? getEnv().BETTER_AUTH_URL ?? "http://localhost:3000",
+  });
+  const env = getEnv();
+  const appUrl = env.APP_URL ?? env.BETTER_AUTH_URL ?? "http://localhost:3000";
+  const stripe = env.STRIPE_SECRET_KEY
+    ? createStripeConnectAdapter({
+        secretKey: env.STRIPE_SECRET_KEY,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+      })
+    : unconfiguredStripeConnect;
+  const tax = createStripeTaxPort({
+    secretKey: env.STRIPE_SECRET_KEY,
+    enabled: env.STRIPE_TAX_ENABLED,
+  });
+  const connectedAccounts = createDrizzleConnectedAccountRepository(db);
+  const checkoutPayments = createDrizzleCheckoutPaymentRepository(db);
+  const paymentRefunds = createDrizzlePaymentRefundRepository(db);
+  const issuedTickets = createDrizzleIssuedTicketRepository(db);
+  const stripeWebhooks = createDrizzleStripeWebhookRepository(db);
+  const taxRecords = createDrizzleTaxRecordRepository(db);
+  const publicApi = createPublicApiService({
+    keys: createDrizzlePublicApiKeyRepository(db),
+    clients: createDrizzlePublicOAuthClientRepository(db),
+    codes: createDrizzlePublicOAuthCodeRepository(db),
+    endpoints: createDrizzlePublicWebhookEndpointRepository(db),
+    deliveries: createDrizzlePublicWebhookDeliveryRepository(db),
+    plans: createDrizzleAnalyticsPlanRepository(db),
+    secret,
+    enqueue: jobs.enqueue,
+  });
+  const paymentsModule = createPaymentService({
+    accounts: connectedAccounts,
+    payments: checkoutPayments,
+    refunds: paymentRefunds,
+    issuedTickets,
+    webhooks: stripeWebhooks,
+    taxRecords,
+    orders,
+    registrations: eventRegistrations,
+    events,
+    stripe,
+    tax,
+    publicWebhooks: publicApi,
+    appUrl,
+    notify: {
+      async notify(input) {
+        await notifications.enqueue({
+          channel: "email",
+          to: input.email,
+          templateKey: input.kind === "refund" ? "receipt" : "cancellation",
+          subjectOverride: input.subject,
+          bodyOverride: input.body,
+          idempotencyKey: `pay:${input.kind}:${input.email}:${input.subject}`,
+        });
+      },
+    },
+  });
+  const checkInRecords = createDrizzleCheckInRecordRepository(db);
+  const integrations = createIntegrationService({
+    connections: createDrizzleIntegrationConnectionRepository(db),
+    refs: createDrizzleIntegrationRefRepository(db),
+    secret,
+    appUrl,
+    enqueue: jobs.enqueue,
+    events,
+    calendars,
+    registrations: eventRegistrations,
+    orders,
+    listCheckIns: (eventId) => checkInRecords.listByEvent(eventId),
+  });
+  const captcha = createHmacCaptchaVerifier({ secret });
+  const privacy = createPrivacyService({
+    events,
+    listRegistrations: (eventId) => eventRegistrations.listByEvent(eventId),
+    profiles,
+    consents: createDrizzleConsentRepository(db),
+    deletions: createDrizzleDeletionRepository(db),
+    processing: createDrizzleProcessingRepository(db),
+    ccpa: createDrizzleCcpaRepository(db),
+    audit: createDrizzlePrivacyAuditRepository(db),
+    subjects: createDrizzlePrivacySubjects(db),
+    captcha,
+  });
   const registrations = createRegistrationService({
     events,
     registrations: eventRegistrations,
@@ -107,12 +284,39 @@ export function getServices() {
     coupons,
     addOns,
     orders,
-    payments: unconfiguredPaymentAdapter,
+    payments: stripe,
+    ledger: {
+      accounts: connectedAccounts,
+      checkoutPayments,
+      tax,
+      taxRecords,
+      issuedTickets,
+      requireConnectedAccount: (organizationId) => paymentsModule.requireConnectedAccount(organizationId),
+      issueTickets: (input) => paymentsModule.issueTickets(input),
+      refundEventCancellation: (organizationId, eventId, reason) =>
+        paymentsModule.refundEventCancellation(organizationId, eventId, reason),
+      platformFeeBps: env.PLATFORM_FEE_BPS ?? DEFAULT_PLATFORM_FEE_BPS,
+    },
+    captcha,
+    integrations,
+    publicWebhooks: publicApi,
     notify: {
       async notify(input) {
-        await jobs.enqueue({
-          type: "email.send",
-          payload: { to: input.email, subject: input.subject, body: input.body },
+        const templateKey =
+          input.kind === "cancelled"
+            ? "cancellation"
+            : input.kind === "refund"
+              ? "receipt"
+              : input.kind === "registration"
+                ? "registration_confirmation"
+                : "event_update";
+        await notifications.enqueue({
+          channel: "email",
+          to: input.email,
+          templateKey,
+          subjectOverride: input.subject,
+          bodyOverride: input.body,
+          idempotencyKey: `reg:${input.kind}:${input.email}:${input.subject}`,
         });
       },
     },
@@ -132,35 +336,118 @@ export function getServices() {
     users,
     enqueue: jobs.enqueue,
   });
+  const organizationService = createOrganizationService({
+    organizations,
+    members,
+    calendars,
+  });
+  const calendarService = createCalendarService({
+    calendars,
+    slugChanges,
+    brandChecker: unconfiguredBrandChecker,
+    limits: {
+      forOrganization: (organizationId) => organizationService.calendarUsage(organizationId),
+    },
+    organizationBranding: async (organizationId) => {
+      const organization = await organizations.findById(organizationId);
+      if (!organization) return null;
+      return { logoUrl: organization.logoUrl, primaryColor: organization.primaryColor };
+    },
+  });
+  const eventService = createEventService({
+    events,
+    calendars,
+    recurrences,
+    overrides,
+    registrations,
+    integrations,
+    publicWebhooks: publicApi,
+    payments: stripe,
+    notify: {
+      async notify(input) {
+        await jobs.enqueue({
+          type: "calendar.followers.notify",
+          payload: input,
+          idempotencyKey: `cal-evt:${input.eventId}:${input.change}`,
+        });
+        if (input.change === "published") {
+          await jobs.enqueue({
+            type: "reminder.schedule",
+            payload: { eventId: input.eventId },
+            idempotencyKey: `reminders:${input.eventId}`,
+          });
+        }
+      },
+    },
+  });
+  const imports = createImportService({
+    imports: createDrizzleImportRepository(db),
+    calendars,
+    events,
+    registrations: eventRegistrations,
+    subscriptions,
+    tickets,
+    updateCalendar: (actor, calendarId, input) => calendarService.updateCalendar(actor, calendarId, input),
+    createEvent: (actor, input) => eventService.createEvent(actor, input),
+    attributions: createDrizzleAttributionRepository(db),
+    secret,
+    enqueue: jobs.enqueue,
+  });
 
   return {
     db,
     users,
     jobs,
-    organizations: createOrganizationService({ organizations, members }),
-    calendars: createCalendarService({
-      calendars,
-      slugChanges,
-      brandChecker: unconfiguredBrandChecker,
-    }),
-    events: createEventService({
+    organizations: organizationService,
+    access,
+    customRoles: createCustomRoleService({ roles: customRoles, members }),
+    agency: createAgencyService({ organizations, agencyClients }),
+    audit: createAuditService({ audit: auditLogs, organizations }),
+    calendars: calendarService,
+    events: eventService,
+    registrations,
+    checkin: createCheckInService({
       events,
-      calendars,
-      recurrences,
-      overrides,
-      registrations,
-      payments: unconfiguredPaymentAdapter,
+      registrations: eventRegistrations,
+      tickets,
+      issuedTickets,
+      passes: createDrizzleCheckInPassRepository(db),
+      records: checkInRecords,
+      alerts: createDrizzleCapacityAlertRepository(db),
+      secret,
+      registrationsService: registrations,
+      integrations,
+      publicWebhooks: publicApi,
+      profiles,
+      realtime: checkInRealtimeHub,
+      listOrganizerEmails: async (organizationId) => {
+        const orgMembers = await members.listByOrganization(organizationId);
+        const emails: string[] = [];
+        for (const member of orgMembers) {
+          if (member.role === "check_in_manager" || member.role === "read_only") continue;
+          const user = await users.findById(member.userId);
+          if (user?.email) emails.push(user.email);
+        }
+        return emails;
+      },
       notify: {
-        async notify(input) {
-          await jobs.enqueue({
-            type: "calendar.followers.notify",
-            payload: input,
-            idempotencyKey: `cal-evt:${input.eventId}:${input.change}`,
-          });
+        async notifyCapacity(input) {
+          for (const email of input.emails) {
+            await notifications.enqueue({
+              channel: "email",
+              to: email,
+              templateKey: "event_update",
+              subjectOverride: `${input.title}: capacity ${input.threshold}%`,
+              bodyOverride: `${input.checkedIn}/${input.capacity} guests are checked in for ${input.title}.`,
+              idempotencyKey: `capacity:${input.eventId}:${input.threshold}`,
+            });
+          }
         },
       },
     }),
-    registrations,
+    payments: paymentsModule,
+    privacy,
+    notifications,
     chat: createChatService({
       events,
       calendars,
@@ -199,6 +486,7 @@ export function getServices() {
       calendars,
       content: eventContent,
       tickets,
+      addOns,
       countActive: (eventId) => eventRegistrations.countActive(eventId),
       profiles,
     }),
@@ -213,7 +501,7 @@ export function getServices() {
       calendars,
       tiers,
       members: calendarMembers,
-      payments: unconfiguredPaymentAdapter,
+      payments: stripe,
       notify: {
         async notify(input) {
           if (!input.userId) return;
@@ -241,7 +529,7 @@ export function getServices() {
     feeds: createCalendarFeedService({ calendars, events }),
     followerNotify,
     memberships: members,
-    members: createOrgMembershipService({ members, invitations, users }),
+    members: createOrgMembershipService({ members, invitations, users, customRoles }),
     invitations,
     profiles: createProfileService({
       profiles,
@@ -264,8 +552,38 @@ export function getServices() {
         });
       },
     }),
+    analytics: createAnalyticsService({
+      events,
+      calendars,
+      registrations: eventRegistrations,
+      orders,
+      followers,
+      payments: checkoutPayments,
+      refunds: paymentRefunds,
+      issuedTickets,
+      records: createDrizzleCheckInRecordRepository(db),
+      passes: createDrizzleCheckInPassRepository(db),
+      deliveries,
+      attributions: createDrizzleAttributionRepository(db),
+      pageViews: createDrizzlePageViewRepository(db),
+      snapshots: createDrizzleSnapshotRepository(db),
+      plans: createDrizzleAnalyticsPlanRepository(db),
+      secret,
+      enqueueRefresh: async (input) => {
+        await jobs.enqueue({
+          type: "report.generate",
+          payload: input,
+          idempotencyKey: `analytics:${input.eventId ?? input.organizationId}:${Math.floor(Date.now() / 60_000)}`,
+        });
+      },
+    }),
     calendarRepo: calendars,
     eventRepo: events,
+    eventRegistrations,
+    calendarSubscriptions: subscriptions,
     eventContent,
+    imports,
+    integrations,
+    publicApi,
   };
 }

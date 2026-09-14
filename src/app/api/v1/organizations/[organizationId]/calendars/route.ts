@@ -13,7 +13,7 @@ export const GET = (request: Request, context: RouteContext) =>
   withApi(async ({ user, url, requestId }) => {
     const { organizationId } = await context.params;
     const services = getServices();
-    const actor = await resolveActor(services.memberships, user!.id, organizationId);
+    const actor = await resolveActor(services.access, user!.id, organizationId);
     const calendars = await services.calendars.listCalendars(actor);
     return jsonOk(paginateById(calendars, parsePageQuery(url.searchParams)), {
       requestId,
@@ -26,7 +26,7 @@ export const POST = (request: Request, context: RouteContext) =>
       const { organizationId } = await context.params;
       const body = createCalendarSchema.parse(await readJson(request));
       const services = getServices();
-      const actor = await resolveActor(services.memberships, user!.id, organizationId);
+      const actor = await resolveActor(services.access, user!.id, organizationId);
       const calendar = await services.calendars.createCalendar(actor, body);
 
       await writeAuditLog(services.db, {

@@ -124,6 +124,10 @@ export function createDrizzleCalendarFollowerRepository(
         .where(eq(calendarFollower.calendarId, calendarId));
       return rows.map(mapFollower);
     },
+    async listByUser(userId) {
+      const rows = await db.select().from(calendarFollower).where(eq(calendarFollower.userId, userId));
+      return rows.map(mapFollower);
+    },
     async countByCalendar(calendarId) {
       const rows = await db
         .select()

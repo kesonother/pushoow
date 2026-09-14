@@ -25,6 +25,8 @@ export const PERMISSIONS = [
   "registrants:manage",
   "exports:create",
   "audit:read",
+  "integrations:manage",
+  "agency:manage_clients",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -34,6 +36,7 @@ const ALL_PERMISSIONS = [...PERMISSIONS];
 const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
   owner: ALL_PERMISSIONS,
   admin: ALL_PERMISSIONS.filter((permission) => permission !== "organization:delete"),
+  custom: ["organization:read"],
   editor: [
     "organization:read",
     "members:read",
@@ -43,6 +46,7 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
     "events:delete",
     "events:publish",
     "subscribers:read",
+    "checkin:manage",
     "registrants:read",
     "registrants:manage",
     "exports:create",
@@ -71,23 +75,38 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
   ],
 };
 
-export function permissionsFor(role: OrganizationRole): readonly Permission[] {
-  return ROLE_PERMISSIONS[role];
-}
-
-export function hasPermission(role: OrganizationRole, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role].includes(permission);
-}
-
-export function assertPermission(role: OrganizationRole, permission: Permission): void {
-  if (!hasPermission(role, permission)) {
-    throw new ForbiddenError(`Role '${role}' cannot perform '${permission}'`);
-  }
-}
-
 export type Actor = {
   userId: string;
   organizationId: string;
   role: OrganizationRole;
   emailVerified?: boolean;
+  customRoleId?: string | null;
+  permissions?: Permission[];
+  viaAgency?: boolean;
+  agencyOrganizationId?: string | null;
 };
+
+export type RoleOrActor = OrganizationRole | Pick<Actor, "role" | "permissions">;
+
+export function permissionsFor(role: OrganizationRole): readonly Permission[] {
+  return ROLE_PERMISSIONS[role];
+}
+
+export function effectivePermissions(roleOrActor: RoleOrActor): readonly Permission[] {
+  if (typeof roleOrActor === "object") {
+    if (roleOrActor.permissions) return roleOrActor.permissions;
+    return permissionsFor(roleOrActor.role);
+  }
+  return permissionsFor(roleOrActor);
+}
+
+export function hasPermission(roleOrActor: RoleOrActor, permission: Permission): boolean {
+  return effectivePermissions(roleOrActor).includes(permission);
+}
+
+export function assertPermission(roleOrActor: RoleOrActor, permission: Permission): void {
+  if (!hasPermission(roleOrActor, permission)) {
+    const role = typeof roleOrActor === "object" ? roleOrActor.role : roleOrActor;
+    throw new ForbiddenError(`Role '${role}' cannot perform '${permission}'`);
+  }
+}

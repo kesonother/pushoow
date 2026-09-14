@@ -34,6 +34,13 @@ export const eventRegistrationModeEnum = pgEnum("event_registration_mode", [
   "token",
 ]);
 
+export const eventRosterModeEnum = pgEnum("event_roster_mode", [
+  "visible",
+  "hidden",
+  "anonymized",
+  "approval_only",
+]);
+
 export const event = pgTable(
   "event",
   {
@@ -73,6 +80,7 @@ export const event = pgTable(
     virtualProvider: text("virtual_provider"),
     templateId: text("template_id"),
     registrationMode: eventRegistrationModeEnum("registration_mode").notNull().default("open_rsvp"),
+    rosterMode: eventRosterModeEnum("roster_mode").notNull().default("hidden"),
     registrationPasswordHash: text("registration_password_hash"),
     allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     accessToken: text("access_token"),

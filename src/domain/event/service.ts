@@ -1,6 +1,7 @@
 import { ConflictError, ForbiddenError, ValidationError } from "@/domain/errors";
 import type { Actor, Permission } from "@/domain/rbac/permissions";
-import { assertPermission } from "@/domain/rbac/permissions";
+import { assertPermission, hasPermission } from "@/domain/rbac/permissions";
+import { assertCanMutateRosterMode } from "@/domain/privacy/roster";
 import { assertSameTenant } from "@/domain/tenant/isolation";
 import type { EventChangeNotifier } from "@/domain/calendar/notify";
 import type { Calendar, CalendarRepository } from "@/domain/calendar/types";
@@ -14,6 +15,10 @@ import {
   type RecurrenceRuleRepository,
 } from "@/domain/event/recurrence";
 import { createRegistrationService, type RegistrationNotifier } from "@/domain/event/registration-service";
+import { emitIntegrationEvent } from "@/domain/integration/emit";
+import type { IntegrationEmitter } from "@/domain/integration/types";
+import { emitPublicWebhook } from "@/domain/public-api/service";
+import type { PublicWebhookEvent } from "@/domain/public-api/types";
 import { getEventTemplate } from "@/domain/event/templates";
 import {
   eventDefaults,
@@ -41,6 +46,8 @@ export type EventServiceDeps = {
   recurrences?: RecurrenceRuleRepository;
   overrides?: OccurrenceOverrideRepository;
   registrations?: ReturnType<typeof createRegistrationService>;
+  integrations?: IntegrationEmitter;
+  publicWebhooks?: { emit: (event: PublicWebhookEvent) => Promise<void> };
   clock?: Clock;
   ids?: IdGenerator;
 };
@@ -92,7 +99,7 @@ export function createEventService(deps: EventServiceDeps) {
     const permission: Permission = requiresPublishPermission(input.status)
       ? "events:publish"
       : "events:create";
-    assertPermission(actor.role, permission);
+    assertPermission(actor, permission);
     assertPaidPublishAllowed(actor, input.status, input.isPaid ?? false);
     const calendar = await requireCalendar(actor, input.calendarId);
 
@@ -166,6 +173,7 @@ export function createEventService(deps: EventServiceDeps) {
       virtualProvider: input.virtualProvider ?? null,
       templateId: template?.id ?? null,
       registrationMode,
+      rosterMode: input.rosterMode ?? "hidden",
       registrationPasswordHash: input.registrationPassword
         ? hashSecret(input.registrationPassword)
         : null,
@@ -188,6 +196,16 @@ export function createEventService(deps: EventServiceDeps) {
         calendarName: calendar.name,
       });
     }
+    await emitIntegrationEvent(deps.integrations, {
+      type: "event.upsert",
+      organizationId: created.organizationId,
+      eventId: created.id,
+    });
+    await emitPublicWebhook(deps.publicWebhooks, {
+      type: "event.created",
+      organizationId: created.organizationId,
+      data: { id: created.id, calendarId: created.calendarId, status: created.status },
+    });
 
     return created;
   }
@@ -197,14 +215,22 @@ export function createEventService(deps: EventServiceDeps) {
     calendarId: string,
     query?: EventListQuery,
   ): Promise<Event[]> {
-    assertPermission(actor.role, "organization:read");
+    assertPermission(actor, "organization:read");
     const calendar = await requireCalendar(actor, calendarId);
     const events = await deps.events.listByCalendar(calendar.id, query);
     return events.filter((event) => !event.deletedAt);
   }
 
+  async function listEventsForOrganization(actor: Actor, query?: EventListQuery): Promise<Event[]> {
+    assertPermission(actor, "organization:read");
+    const list = deps.events.listByOrganization
+      ? await deps.events.listByOrganization(actor.organizationId, query)
+      : [];
+    return list.filter((event) => !event.deletedAt);
+  }
+
   async function getEvent(actor: Actor, eventId: string): Promise<Event> {
-    assertPermission(actor.role, "organization:read");
+    assertPermission(actor, "organization:read");
     const event = await deps.events.findById(eventId);
     assertSameTenant(event, actor.organizationId, "Event");
     return event as Event;
@@ -214,7 +240,10 @@ export function createEventService(deps: EventServiceDeps) {
     const permission: Permission = requiresPublishPermission(input.status)
       ? "events:publish"
       : "events:update";
-    assertPermission(actor.role, permission);
+    assertPermission(actor, permission);
+    if (input.rosterMode) {
+      assertCanMutateRosterMode(hasPermission(actor.role, "events:update"));
+    }
     const event = await getEvent(actor, eventId);
     if (input.status && input.status !== event.status) {
       assertTransition(event.status, input.status);
@@ -274,6 +303,7 @@ export function createEventService(deps: EventServiceDeps) {
         input.virtualProvider === undefined ? event.virtualProvider : input.virtualProvider,
       templateId: input.templateId === undefined ? event.templateId : input.templateId,
       registrationMode: input.registrationMode ?? event.registrationMode,
+      rosterMode: input.rosterMode ?? event.rosterMode,
       registrationPasswordHash: input.registrationPassword
         ? hashSecret(input.registrationPassword)
         : event.registrationPasswordHash,
@@ -297,6 +327,16 @@ export function createEventService(deps: EventServiceDeps) {
         title: updated.title,
         calendarName: (await requireCalendar(actor, updated.calendarId)).name,
       });
+      await emitIntegrationEvent(deps.integrations, {
+        type: "event.cancelled",
+        organizationId: updated.organizationId,
+        eventId: updated.id,
+      });
+      await emitPublicWebhook(deps.publicWebhooks, {
+        type: "event.cancelled",
+        organizationId: updated.organizationId,
+        data: { id: updated.id, calendarId: updated.calendarId, status: updated.status },
+      });
     } else if (isPublishStatus(nextStatus)) {
       const change = isPublishStatus(event.status) ? "updated" : "published";
       await deps.notify?.notify({
@@ -306,6 +346,18 @@ export function createEventService(deps: EventServiceDeps) {
         change,
         title: updated.title,
         calendarName: (await requireCalendar(actor, updated.calendarId)).name,
+      });
+      await emitIntegrationEvent(deps.integrations, {
+        type: "event.upsert",
+        organizationId: updated.organizationId,
+        eventId: updated.id,
+      });
+    }
+    if (nextStatus !== "cancelled" || event.status === "cancelled") {
+      await emitPublicWebhook(deps.publicWebhooks, {
+        type: "event.updated",
+        organizationId: updated.organizationId,
+        data: { id: updated.id, calendarId: updated.calendarId, status: updated.status },
       });
     }
 
@@ -351,7 +403,7 @@ export function createEventService(deps: EventServiceDeps) {
   }
 
   async function cancelEvent(actor: Actor, eventId: string): Promise<Event> {
-    assertPermission(actor.role, "events:update");
+    assertPermission(actor, "events:update");
     const event = await getEvent(actor, eventId);
     assertTransition(event.status, "cancelled");
     const updated = await updateEvent(actor, eventId, { status: "cancelled" });
@@ -367,7 +419,7 @@ export function createEventService(deps: EventServiceDeps) {
     eventId: string,
     next: { startsAt: Date; endsAt: Date },
   ): Promise<Event> {
-    assertPermission(actor.role, "events:update");
+    assertPermission(actor, "events:update");
     const event = await getEvent(actor, eventId);
     assertTransition(event.status, "postponed");
     assertWindow(next.startsAt, next.endsAt);
@@ -409,7 +461,7 @@ export function createEventService(deps: EventServiceDeps) {
       exceptions?: string[];
     },
   ): Promise<RecurrenceRule> {
-    assertPermission(actor.role, "events:update");
+    assertPermission(actor, "events:update");
     const event = await getEvent(actor, eventId);
     if (!deps.recurrences) {
       throw new ValidationError("Recurrence storage is not available");
@@ -436,7 +488,7 @@ export function createEventService(deps: EventServiceDeps) {
     originalStartsAt: Date,
     patch: { startsAt?: Date; endsAt?: Date; cancelled?: boolean },
   ) {
-    assertPermission(actor.role, "events:update");
+    assertPermission(actor, "events:update");
     const event = await getEvent(actor, eventId);
     if (!deps.overrides) throw new ValidationError("Occurrence overrides are not available");
     const now = clock.now();
@@ -482,6 +534,7 @@ export function createEventService(deps: EventServiceDeps) {
   return {
     createEvent,
     listEvents,
+    listEventsForOrganization,
     getEvent,
     updateEvent,
     saveWizardStep,

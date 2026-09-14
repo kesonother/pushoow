@@ -25,6 +25,7 @@ export default async function LoginPage() {
               optionalPassword: t.auth.optionalPassword,
               or: t.auth.or,
               continueWith: t.auth.continueWith,
+              captcha: t.privacy.captcha,
             }}
           />
         </Card>

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { authClient } from "@/auth/client";
 import type { OAuthProvider } from "@/auth/providers";
 import { Button } from "@/ui/button";
+import { CaptchaFields, useCaptchaChallenge } from "@/ui/captcha-fields";
 import { Input } from "@/ui/input";
 
 type AuthFormProps = {
@@ -22,6 +23,7 @@ type AuthFormProps = {
     optionalPassword: string;
     or: string;
     continueWith: string;
+    captcha: string;
   };
 };
 
@@ -31,6 +33,7 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
   const [pending, setPending] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const captcha = useCaptchaChallenge();
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -41,11 +44,19 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
     const name = String(formData.get("name") ?? "");
     const intent = String(formData.get("intent") ?? "magic");
 
+    const captchaHeaders = {
+      "x-captcha-id": String(formData.get("captchaId") ?? ""),
+      "x-captcha-answer": String(formData.get("captchaAnswer") ?? ""),
+    };
+
     if (intent === "magic") {
-      const result = await authClient.signIn.magicLink({
-        email,
-        callbackURL: "/dashboard",
-      });
+      const result = await authClient.signIn.magicLink(
+        {
+          email,
+          callbackURL: "/dashboard",
+        },
+        { headers: captchaHeaders },
+      );
       setPending(false);
       if (result.error) {
         setError(result.error.message ?? "Unable to send magic link");
@@ -57,8 +68,8 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
 
     const result =
       mode === "register"
-        ? await authClient.signUp.email({ email, password, name })
-        : await authClient.signIn.email({ email, password });
+        ? await authClient.signUp.email({ email, password, name }, { headers: captchaHeaders })
+        : await authClient.signIn.email({ email, password }, { headers: captchaHeaders });
 
     setPending(false);
 
@@ -95,6 +106,7 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
             hint={labels.passwordHint}
           />
         ) : null}
+        <CaptchaFields challenge={captcha} label={labels.captcha} />
         {error ? (
           <p role="alert" className="text-sm text-red-700">
             {error}

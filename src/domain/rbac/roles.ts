@@ -5,6 +5,7 @@ export const ORGANIZATION_ROLES = [
   "check_in_manager",
   "finance",
   "read_only",
+  "custom",
 ] as const;
 
 export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number];
@@ -17,6 +18,7 @@ export const ROLE_RANK: Record<OrganizationRole, number> = {
   owner: 100,
   admin: 80,
   editor: 60,
+  custom: 55,
   finance: 50,
   check_in_manager: 40,
   read_only: 10,

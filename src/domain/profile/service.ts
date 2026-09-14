@@ -38,6 +38,10 @@ function emptyAttendee(userId: string, now: Date): AttendeeProfile {
     website: null,
     linkedin: null,
     visibility: "private",
+    appearOnRoster: false,
+    showAvatar: false,
+    showBio: false,
+    showSocial: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -108,7 +112,19 @@ export function createProfileService(deps: ProfileServiceDeps) {
     actorUserId: string,
     targetId: string,
     input: Partial<
-      Pick<AttendeeProfile, "displayName" | "avatarUrl" | "bio" | "website" | "linkedin" | "visibility">
+      Pick<
+        AttendeeProfile,
+        | "displayName"
+        | "avatarUrl"
+        | "bio"
+        | "website"
+        | "linkedin"
+        | "visibility"
+        | "appearOnRoster"
+        | "showAvatar"
+        | "showBio"
+        | "showSocial"
+      >
     >,
   ) {
     if (actorUserId !== targetId) {
@@ -122,6 +138,10 @@ export function createProfileService(deps: ProfileServiceDeps) {
       ...current,
       ...sanitizeProfile(input),
       visibility: input.visibility ?? current.visibility,
+      appearOnRoster: input.appearOnRoster ?? current.appearOnRoster,
+      showAvatar: input.showAvatar ?? current.showAvatar,
+      showBio: input.showBio ?? current.showBio,
+      showSocial: input.showSocial ?? current.showSocial,
       updatedAt: clock.now(),
     });
   }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { resolveCalendarActor } from "@/api/authorize";
 import { getSession } from "@/auth/session";
+import { canAccessFullDashboard } from "@/domain/rbac/dashboard";
 import { DomainError } from "@/domain/errors";
 import type { Calendar } from "@/domain/calendar/types";
 import type { OrganizerInsights } from "@/domain/discovery/types";
@@ -11,6 +12,7 @@ import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { CalendarInsights } from "@/ui/calendar-insights";
 import { Card } from "@/ui/card";
+import { NewsletterEditor } from "@/ui/newsletter-editor";
 import { EditCalendarForm } from "@/ui/edit-calendar-form";
 import { SiteHeader } from "@/ui/site-header";
 
@@ -33,11 +35,12 @@ export default async function EditCalendarPage({ params }: PageProps) {
 
   try {
     const actor = await resolveCalendarActor(
-      { memberships: services.memberships, calendars: services.calendarRepo },
+      { memberships: services.access, calendars: services.calendarRepo },
       session.user.id,
       calendarId,
     );
     if (actor.organizationId !== organizationId) redirect("/dashboard");
+    if (!canAccessFullDashboard(actor.role)) redirect("/check-in");
     calendar = await services.calendars.getCalendar(actor, calendarId);
     members = await services.calendarMemberships.listMembers(actor, calendarId);
     tiers = await services.calendarMemberships.listTiers(calendarId);
@@ -60,12 +63,20 @@ export default async function EditCalendarPage({ params }: PageProps) {
           {t.dashboard.calendars}
         </Link>
           <h1 className="text-3xl font-semibold tracking-tight">{calendar.name}</h1>
-          <Link
-            href={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/new`}
-            className="text-sm underline"
-          >
-            {t.event.newEvent}
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/new`}
+              className="text-sm underline"
+            >
+              {t.event.newEvent}
+            </Link>
+            <Link
+              href={`/dashboard/organizations/${organizationId}/import?calendarId=${calendarId}&kind=subscribers`}
+              className="text-sm underline"
+            >
+              {t.dashboard.importCsv}
+            </Link>
+          </div>
         <Card>
           <EditCalendarForm
             calendar={calendar}
@@ -83,6 +94,22 @@ export default async function EditCalendarPage({ params }: PageProps) {
         </Card>
         {insights ? <CalendarInsights insights={insights} labels={t.discover} /> : null}
         <Card>
+          <h2 className="mb-4 text-lg font-medium">{t.notifications.newsletter}</h2>
+          <NewsletterEditor
+            calendarId={calendarId}
+            labels={{
+              subjectA: t.notifications.subjectA,
+              subjectB: t.notifications.subjectB,
+              add: t.notifications.add,
+              previewDesktop: t.notifications.previewDesktop,
+              previewMobile: t.notifications.previewMobile,
+              save: t.profile.save,
+              send: t.notifications.send,
+              unavailable: t.notifications.unavailable,
+            }}
+          />
+        </Card>
+        <Card>
           <h2 className="text-lg font-medium">{t.event.wizardTitle}</h2>
           <ul className="mt-3 grid gap-2 text-sm">
             {events.map((event) => (
@@ -90,12 +117,20 @@ export default async function EditCalendarPage({ params }: PageProps) {
                 <span>
                   {event.title} · {event.status}
                 </span>
-                <Link
-                  className="underline"
-                  href={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/${event.id}/edit`}
-                >
-                  {t.event.editEvent}
-                </Link>
+                <span className="flex gap-3">
+                  <Link
+                    className="underline"
+                    href={`/dashboard/organizations/${organizationId}/events/${event.id}`}
+                  >
+                    {t.dashboard.eventDash}
+                  </Link>
+                  <Link
+                    className="underline"
+                    href={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/${event.id}/edit`}
+                  >
+                    {t.event.editEvent}
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>

@@ -11,7 +11,7 @@ export const POST = (request: Request, context: RouteContext) =>
     const body = wizardSchema.parse(await readJson(request));
     const services = getServices();
     const actor = await resolveCalendarActor(
-      { memberships: services.memberships, calendars: services.calendarRepo },
+      { memberships: services.access, calendars: services.calendarRepo },
       user!.id,
       calendarId,
       user!.emailVerified,

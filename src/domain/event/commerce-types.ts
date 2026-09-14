@@ -45,19 +45,35 @@ export type AddOn = {
   updatedAt: Date;
 };
 
+export const ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "cancelled",
+  "refund_pending",
+  "refunded",
+  "partially_refunded",
+] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
 export type EventOrder = {
   id: string;
   organizationId: string;
   eventId: string;
   buyerEmail: string;
   buyerUserId: string | null;
-  status: "pending" | "paid" | "cancelled" | "refund_pending" | "refunded";
+  status: OrderStatus;
   subtotalCents: number;
+  ticketSubtotalCents: number;
+  addOnSubtotalCents: number;
   discountCents: number;
+  taxCents: number;
+  platformFeeCents: number;
   totalCents: number;
   currency: string;
   couponId: string | null;
   paymentExternalId: string | null;
+  idempotencyKey: string | null;
+  connectedAccountId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -98,7 +114,9 @@ export type AddOnRepository = {
 export type OrderRepository = {
   create: (order: EventOrder, items: EventOrderItem[]) => Promise<EventOrder>;
   findById: (id: string) => Promise<EventOrder | null>;
+  findByIdempotencyKey: (key: string) => Promise<EventOrder | null>;
   listByEvent: (eventId: string) => Promise<EventOrder[]>;
+  listByOrganization?: (organizationId: string) => Promise<EventOrder[]>;
   listItems: (orderId: string) => Promise<EventOrderItem[]>;
   save: (order: EventOrder) => Promise<EventOrder>;
 };
@@ -128,6 +146,8 @@ export type EventRegistration = {
   quantity: number;
   offeredUntil: Date | null;
   waitlistPosition: number | null;
+  anonymous: boolean;
+  appearOnRoster: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -138,6 +158,7 @@ export type EventRegistrationRepository = {
     registration: EventRegistration,
     capacity: number | null,
     quantity: number,
+    ticketLimits?: Array<{ ticketTypeId: string; capacity: number | null; quantity: number }>,
   ) => Promise<{ ok: true; registration: EventRegistration } | { ok: false; taken: number }>;
   findById: (id: string) => Promise<EventRegistration | null>;
   findByEventAndUser: (eventId: string, userId: string) => Promise<EventRegistration | null>;
@@ -146,6 +167,8 @@ export type EventRegistrationRepository = {
     email: string,
   ) => Promise<EventRegistration | null>;
   listByEvent: (eventId: string) => Promise<EventRegistration[]>;
+  listByOrganization?: (organizationId: string) => Promise<EventRegistration[]>;
+  listByUser?: (userId: string) => Promise<EventRegistration[]>;
   listAll?: () => Promise<EventRegistration[]>;
   countActive: (eventId: string) => Promise<number>;
   save: (registration: EventRegistration) => Promise<EventRegistration>;

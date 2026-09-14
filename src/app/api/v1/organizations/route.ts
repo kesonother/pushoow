@@ -7,12 +7,16 @@ import { getServices } from "@/server/container";
 const createOrganizationSchema = z.object({
   name: z.string().min(2).max(120),
   slug: z.string().min(2).max(80).optional(),
+  kind: z.enum(["standard", "agency"]).optional(),
 });
 
 export const GET = withApi(async ({ user, url, requestId }) => {
   const services = getServices();
-  const organizations = await services.organizations.listOrganizationsForUser(user!.id);
-  const page = paginateById(organizations, parsePageQuery(url.searchParams));
+  const accessible = await services.access.listAccessible(user!.id, user!.emailVerified);
+  const page = paginateById(
+    accessible.map((item) => item.organization),
+    parsePageQuery(url.searchParams),
+  );
   return jsonOk(page, { requestId });
 });
 
@@ -24,6 +28,7 @@ export const POST = withApi(
       actorUserId: user!.id,
       name: body.name,
       slug: body.slug,
+      kind: body.kind,
     });
 
     await writeAuditLog(services.db, {

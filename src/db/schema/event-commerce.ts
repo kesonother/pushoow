@@ -27,6 +27,7 @@ export const eventOrderStatusEnum = pgEnum("event_order_status", [
   "cancelled",
   "refund_pending",
   "refunded",
+  "partially_refunded",
 ]);
 
 export const eventRegistrationStatusEnum = pgEnum("event_registration_status", [
@@ -131,15 +132,24 @@ export const eventOrder = pgTable(
     buyerUserId: text("buyer_user_id"),
     status: eventOrderStatusEnum("status").notNull().default("pending"),
     subtotalCents: integer("subtotal_cents").notNull(),
+    ticketSubtotalCents: integer("ticket_subtotal_cents").notNull().default(0),
+    addOnSubtotalCents: integer("addon_subtotal_cents").notNull().default(0),
     discountCents: integer("discount_cents").notNull().default(0),
+    taxCents: integer("tax_cents").notNull().default(0),
+    platformFeeCents: integer("platform_fee_cents").notNull().default(0),
     totalCents: integer("total_cents").notNull(),
     currency: text("currency").notNull().default("EUR"),
     couponId: text("coupon_id"),
     paymentExternalId: text("payment_external_id"),
+    idempotencyKey: text("idempotency_key"),
+    connectedAccountId: text("connected_account_id"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
   },
-  (table) => [index("event_order_event_id_idx").on(table.eventId)],
+  (table) => [
+    index("event_order_event_id_idx").on(table.eventId),
+    unique("event_order_idempotency_key_unique").on(table.idempotencyKey),
+  ],
 );
 
 export const eventOrderItem = pgTable("event_order_item", {
@@ -176,12 +186,15 @@ export const eventRegistration = pgTable(
     quantity: integer("quantity").notNull().default(1),
     offeredUntil: timestamp("offered_until", { withTimezone: true, mode: "date" }),
     waitlistPosition: integer("waitlist_position"),
+    anonymous: boolean("anonymous").notNull().default(false),
+    appearOnRoster: boolean("appear_on_roster").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
   },
   (table) => [
     unique("event_registration_email_unique").on(table.eventId, table.email),
     index("event_registration_event_id_idx").on(table.eventId),
+    index("event_registration_org_created_idx").on(table.organizationId, table.createdAt),
   ],
 );
 

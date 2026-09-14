@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/auth/session";
+import { canAccessFullDashboard } from "@/domain/rbac/dashboard";
+import { hasPermission } from "@/domain/rbac/permissions";
 import { getI18n } from "@/i18n/server";
+import { staffCanCreateOrganizations } from "@/server/dashboard-access";
 import { getServices } from "@/server/container";
 import Link from "next/link";
 import { Card } from "@/ui/card";
@@ -15,8 +18,12 @@ export default async function DashboardPage() {
 
   const { t } = await getI18n();
   const services = getServices();
-  const organizations = await services.organizations.listOrganizationsForUser(
+  const accessible = await services.access.listAccessible(
     session.user.id,
+    Boolean(session.user.emailVerified),
+  );
+  const canCreate = staffCanCreateOrganizations(
+    accessible.filter((item) => !item.actor.viaAgency).map((item) => item.actor.role),
   );
 
   return (
@@ -24,27 +31,52 @@ export default async function DashboardPage() {
       <SiteHeader t={t} signedIn />
       <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
         <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.title}</h1>
-        <CreateOrganizationForm labels={{ create: t.dashboard.create, name: t.dashboard.name }} />
-        {organizations.length === 0 ? (
+        {canCreate ? (
+          <CreateOrganizationForm labels={{ create: t.dashboard.create, name: t.dashboard.name }} />
+        ) : (
+          <p className="text-sm text-zinc-600">{t.dashboard.checkinOnly}</p>
+        )}
+        {accessible.length === 0 ? (
           <p className="text-zinc-600">{t.dashboard.empty}</p>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
-            {organizations.map((organization) => (
-              <li key={organization.id}>
-                <Card>
-                  <h2 className="text-lg font-medium">{organization.name}</h2>
-                  <p className="mt-1 text-sm text-zinc-600">{organization.slug}</p>
-                  <div className="mt-3 flex gap-3 text-sm underline">
-                    <Link href={`/dashboard/organizations/${organization.id}/calendars`}>
-                      {t.dashboard.calendars}
-                    </Link>
-                    <Link href={`/dashboard/organizations/${organization.id}/members`}>
-                      Members
-                    </Link>
-                  </div>
-                </Card>
-              </li>
-            ))}
+            {accessible.map(({ organization, actor }) => {
+              const full = canAccessFullDashboard(actor);
+              const door = hasPermission(actor, "checkin:manage");
+              return (
+                <li key={organization.id}>
+                  <Card>
+                    <h2 className="text-lg font-medium">{organization.name}</h2>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      {organization.slug}
+                      {actor.viaAgency ? ` · ${t.dashboard.viaAgency}` : ""}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm underline">
+                      {full ? (
+                        <>
+                          <Link href={`/dashboard/organizations/${organization.id}`}>
+                            {t.dashboard.insights}
+                          </Link>
+                          <Link href={`/dashboard/organizations/${organization.id}/calendars`}>
+                            {t.dashboard.calendars}
+                          </Link>
+                          <Link href={`/dashboard/organizations/${organization.id}/members`}>
+                            {t.dashboard.members}
+                          </Link>
+                          <Link href={`/dashboard/organizations/${organization.id}/settings`}>
+                            {t.dashboard.settings}
+                          </Link>
+                          <Link href={`/dashboard/organizations/${organization.id}/payments`}>
+                            {t.dashboard.payments}
+                          </Link>
+                        </>
+                      ) : null}
+                      {door ? <Link href="/check-in">{t.nav.checkin}</Link> : null}
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
           </ul>
         )}
       </main>

@@ -12,7 +12,7 @@ export const GET = (request: Request, context: RouteContext) =>
     const { organizationId } = await context.params;
     const services = getServices();
     const actor = await resolveActor(
-      services.memberships,
+      services.access,
       user!.id,
       organizationId,
       user!.emailVerified,

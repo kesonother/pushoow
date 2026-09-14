@@ -70,6 +70,7 @@ export const calendarFollower = pgTable(
     unique("calendar_follower_user_unique").on(table.calendarId, table.userId),
     index("calendar_follower_organization_id_idx").on(table.organizationId),
     index("calendar_follower_calendar_id_idx").on(table.calendarId),
+    index("calendar_follower_user_id_idx").on(table.userId),
   ],
 );
 

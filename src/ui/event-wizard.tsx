@@ -52,6 +52,7 @@ export function EventWizard({
     latitude: "",
     longitude: "",
     registrationMode: "open_rsvp",
+    rosterMode: "hidden",
     registrationPassword: "",
     allowedEmailDomains: "",
     accessToken: "",
@@ -99,6 +100,7 @@ export function EventWizard({
           latitude: event.latitude != null ? String(event.latitude) : "",
           longitude: event.longitude != null ? String(event.longitude) : "",
           registrationMode: event.registrationMode ?? "open_rsvp",
+          rosterMode: event.rosterMode ?? "hidden",
           allowedEmailDomains: (event.allowedEmailDomains ?? []).join(", "),
           capacity: event.capacity != null ? String(event.capacity) : "",
           waitlistEnabled: event.waitlistEnabled ?? true,
@@ -142,6 +144,7 @@ export function EventWizard({
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
         registrationMode: form.registrationMode,
+        rosterMode: form.rosterMode,
         registrationPassword: form.registrationPassword || null,
         allowedEmailDomains: form.allowedEmailDomains
           .split(",")
@@ -311,6 +314,19 @@ export function EventWizard({
               <option value="password">Password</option>
               <option value="email_domain">Email domain</option>
               <option value="token">Token</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium">
+            {labels.rosterMode}
+            <select
+              className="min-h-11 rounded-lg border border-zinc-300 px-3"
+              value={form.rosterMode}
+              onChange={(e) => patch("rosterMode", e.target.value)}
+            >
+              <option value="hidden">hidden</option>
+              <option value="visible">visible</option>
+              <option value="anonymized">anonymized</option>
+              <option value="approval_only">approval_only</option>
             </select>
           </label>
           {form.registrationMode === "password" ? (

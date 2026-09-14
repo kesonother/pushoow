@@ -12,7 +12,7 @@ export async function resolveChatActor(
   if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
   let membership = null;
   try {
-    membership = await resolveActor(services.memberships, user.id, event.organizationId);
+    membership = await resolveActor(services.access, user.id, event.organizationId);
   } catch (error) {
     if (!(error instanceof ForbiddenError)) throw error;
   }

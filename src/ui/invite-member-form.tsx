@@ -4,7 +4,13 @@ import { useState } from "react";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
-export function InviteMemberForm({ organizationId }: { organizationId: string }) {
+export function InviteMemberForm({
+  organizationId,
+  customRoles = [],
+}: {
+  organizationId: string;
+  customRoles?: Array<{ id: string; name: string }>;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
 
@@ -17,6 +23,7 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
       body: JSON.stringify({
         email: String(formData.get("email") ?? ""),
         role: String(formData.get("role") ?? "read_only"),
+        customRoleId: String(formData.get("customRoleId") ?? "") || undefined,
       }),
     });
     const payload = await response.json();
@@ -42,8 +49,22 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
           <option value="check_in_manager">check-in manager</option>
           <option value="finance">finance</option>
           <option value="read_only">read-only</option>
+          {customRoles.length > 0 ? <option value="custom">custom</option> : null}
         </select>
       </label>
+      {customRoles.length > 0 ? (
+        <label className="text-sm font-medium">
+          Custom role
+          <select name="customRoleId" className="mt-1.5 min-h-11 w-full rounded-lg border border-zinc-300 px-3">
+            <option value="">—</option>
+            {customRoles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <Button type="submit">Invite</Button>
       {error ? (
         <p role="alert" className="text-sm text-red-700 sm:w-full">

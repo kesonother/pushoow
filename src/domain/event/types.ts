@@ -25,6 +25,9 @@ export const REGISTRATION_MODES = [
 ] as const;
 export type RegistrationMode = (typeof REGISTRATION_MODES)[number];
 
+export const ROSTER_MODES = ["visible", "hidden", "anonymized", "approval_only"] as const;
+export type RosterMode = (typeof ROSTER_MODES)[number];
+
 export type EventDateChange = {
   fromStartsAt: string;
   fromEndsAt: string;
@@ -65,6 +68,7 @@ export type Event = {
   virtualProvider: string | null;
   templateId: string | null;
   registrationMode: RegistrationMode;
+  rosterMode: RosterMode;
   registrationPasswordHash: string | null;
   allowedEmailDomains: string[];
   accessToken: string | null;
@@ -96,6 +100,7 @@ export type EventRepository = {
     slug: string,
   ) => Promise<Event | null>;
   listByCalendar: (calendarId: string, query?: EventListQuery) => Promise<Event[]>;
+  listByOrganization?: (organizationId: string, query?: EventListQuery) => Promise<Event[]>;
   listPublic: (excludeId?: string) => Promise<Event[]>;
   update: (event: Event) => Promise<Event>;
 };
@@ -125,6 +130,7 @@ export function eventDefaults(): Pick<
   | "virtualProvider"
   | "templateId"
   | "registrationMode"
+  | "rosterMode"
   | "registrationPasswordHash"
   | "allowedEmailDomains"
   | "accessToken"
@@ -153,6 +159,7 @@ export function eventDefaults(): Pick<
     virtualProvider: null,
     templateId: null,
     registrationMode: "open_rsvp",
+    rosterMode: "hidden",
     registrationPasswordHash: null,
     allowedEmailDomains: [],
     accessToken: null,
@@ -196,6 +203,7 @@ export type EventWriteInput = {
   virtualProvider?: string | null;
   templateId?: string | null;
   registrationMode?: RegistrationMode;
+  rosterMode?: RosterMode;
   registrationPassword?: string | null;
   allowedEmailDomains?: string[];
   accessToken?: string | null;

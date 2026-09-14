@@ -32,7 +32,7 @@ export const POST = (request: Request, context: RouteContext) =>
     const event = await services.eventRepo.findById(eventId);
     if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
     const actor = requireActorPermission(
-      await resolveActor(services.memberships, user!.id, event.organizationId),
+      await resolveActor(services.access, user!.id, event.organizationId),
       "events:update",
     );
     const item = await services.eventContent.create({

@@ -16,7 +16,7 @@ async function actorForEvent(userId: string, eventId: string, emailVerified = fa
     throw new NotFoundError("Event", eventId);
   }
   const actor = await resolveActor(
-    services.memberships,
+    services.access,
     userId,
     event.organizationId,
     emailVerified,

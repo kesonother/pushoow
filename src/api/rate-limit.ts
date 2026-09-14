@@ -14,13 +14,19 @@ export type RateLimitOptions = {
   now?: number;
 };
 
-export function consumeRateLimit(options: RateLimitOptions): void {
+export type RateLimitState = {
+  limit: number;
+  remaining: number;
+  resetAt: number;
+};
+
+export function consumeRateLimit(options: RateLimitOptions): RateLimitState {
   const now = options.now ?? Date.now();
   const current = buckets.get(options.key);
 
   if (!current || current.resetAt <= now) {
     buckets.set(options.key, { count: 1, resetAt: now + options.windowMs });
-    return;
+    return { limit: options.limit, remaining: options.limit - 1, resetAt: now + options.windowMs };
   }
 
   if (current.count >= options.limit) {
@@ -28,6 +34,7 @@ export function consumeRateLimit(options: RateLimitOptions): void {
   }
 
   current.count += 1;
+  return { limit: options.limit, remaining: options.limit - current.count, resetAt: current.resetAt };
 }
 
 export function resetRateLimits() {

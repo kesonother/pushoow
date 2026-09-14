@@ -5,6 +5,7 @@ import {
   EVENT_VISIBILITIES,
   LOCATION_KINDS,
   REGISTRATION_MODES,
+  ROSTER_MODES,
 } from "@/domain/event/types";
 import { RECURRENCE_FREQUENCIES } from "@/domain/event/recurrence";
 
@@ -36,6 +37,7 @@ export const eventWriteSchema = z.object({
   virtualProvider: z.string().max(80).nullable().optional(),
   templateId: z.string().max(40).nullable().optional(),
   registrationMode: z.enum(REGISTRATION_MODES).optional(),
+  rosterMode: z.enum(ROSTER_MODES).optional(),
   registrationPassword: z.string().min(4).max(80).nullable().optional(),
   allowedEmailDomains: z.array(z.string().min(3).max(80)).optional(),
   accessToken: z.string().min(6).max(120).nullable().optional(),
@@ -75,6 +77,10 @@ export const registerSchema = z.object({
   invitation: z.boolean().optional(),
   ticketTypeId: z.string().optional(),
   quantity: z.number().int().positive().optional(),
+  anonymous: z.boolean().optional(),
+  appearOnRoster: z.boolean().optional(),
+  captchaId: z.string().optional(),
+  captchaAnswer: z.string().optional(),
 });
 
 export const orderSchema = z.object({
@@ -82,6 +88,22 @@ export const orderSchema = z.object({
   items: z.array(z.object({ ticketTypeId: z.string(), quantity: z.number().int().positive() })),
   addOnIds: z.array(z.string()).optional(),
   couponCode: z.string().optional(),
+  taxExemptionCode: z.string().optional(),
+  billingCountry: z.string().min(2).max(2).optional(),
+  billingPostalCode: z.string().max(16).optional(),
   password: z.string().optional(),
   token: z.string().optional(),
+  anonymous: z.boolean().optional(),
+  appearOnRoster: z.boolean().optional(),
+  captchaId: z.string().optional(),
+  captchaAnswer: z.string().optional(),
+});
+
+export const quoteSchema = z.object({
+  items: z.array(z.object({ ticketTypeId: z.string(), quantity: z.number().int().positive() })),
+  addOnIds: z.array(z.string()).optional(),
+  couponCode: z.string().optional(),
+  taxExemptionCode: z.string().optional(),
+  billingCountry: z.string().min(2).max(2).optional(),
+  billingPostalCode: z.string().max(16).optional(),
 });

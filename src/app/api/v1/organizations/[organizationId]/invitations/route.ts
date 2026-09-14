@@ -3,7 +3,7 @@ import { resolveActor } from "@/api/authorize";
 import { jsonOk, readJson, withApi } from "@/api/handler";
 import { assertPermission } from "@/domain/rbac/permissions";
 import { ORGANIZATION_ROLES } from "@/domain/rbac/roles";
-import { writeAuditLog } from "@/db/audit";
+import { requestAuditContext, writeAuditLog } from "@/db/audit";
 import { getServices } from "@/server/container";
 import { sendAuthEmail } from "@/auth/mailer";
 import { getEnv } from "@/lib/env";
@@ -11,6 +11,7 @@ import { getEnv } from "@/lib/env";
 const inviteSchema = z.object({
   email: z.string().email(),
   role: z.enum(ORGANIZATION_ROLES),
+  customRoleId: z.string().min(1).optional(),
 });
 
 type RouteContext = {
@@ -22,12 +23,12 @@ export const GET = (request: Request, context: RouteContext) =>
     const { organizationId } = await context.params;
     const services = getServices();
     const actor = await resolveActor(
-      services.memberships,
+      services.access,
       user!.id,
       organizationId,
       user!.emailVerified,
     );
-    assertPermission(actor.role, "members:read");
+    assertPermission(actor, "members:read");
     const invitations = await services.invitations.listByOrganization(organizationId);
     return jsonOk(
       invitations.map((invitation) => {
@@ -46,7 +47,7 @@ export const POST = (request: Request, context: RouteContext) =>
       const body = inviteSchema.parse(await readJson(request));
       const services = getServices();
       const actor = await resolveActor(
-        services.memberships,
+        services.access,
         user!.id,
         organizationId,
         user!.emailVerified,
@@ -64,7 +65,9 @@ export const POST = (request: Request, context: RouteContext) =>
         action: "member.invite",
         resourceType: "organization_invitation",
         resourceId: invitation.id,
+        after: { email: invitation.email, role: invitation.role, customRoleId: invitation.customRoleId },
         requestId,
+        ...requestAuditContext(request),
       });
       const { tokenHash, ...safe } = invitation;
       void tokenHash;

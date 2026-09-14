@@ -51,11 +51,16 @@ import type {
 } from "@/domain/chat/types";
 import type { Event, EventListQuery, EventRepository } from "@/domain/event/types";
 import type {
+  AgencyClientLink,
+  AgencyClientRepository,
+  CustomRoleRepository,
   MembershipRepository,
   Organization,
+  OrganizationCustomRole,
   OrganizationMember,
   OrganizationRepository,
 } from "@/domain/organization/types";
+import type { AuditLog, AuditRepository } from "@/domain/audit/types";
 
 export function createMemoryOrganizations(): OrganizationRepository {
   const items = new Map<string, Organization>();
@@ -76,6 +81,14 @@ export function createMemoryOrganizations(): OrganizationRepository {
         const item = items.get(id);
         return item ? [item] : [];
       });
+    },
+    async listByAgency(agencyOrganizationId) {
+      return [...items.values()].filter((item) => item.agencyOrganizationId === agencyOrganizationId);
+    },
+    async listRetentionPolicies() {
+      return [...items.values()]
+        .filter((item) => !item.deletedAt)
+        .map((item) => ({ id: item.id, auditRetentionDays: item.auditRetentionDays }));
     },
     async update(organization) {
       items.set(organization.id, organization);
@@ -111,6 +124,82 @@ export function createMemoryMembers(): MembershipRepository {
     },
     async delete(id) {
       items.delete(id);
+    },
+  };
+}
+
+export function createMemoryCustomRoles(): CustomRoleRepository {
+  const items = new Map<string, OrganizationCustomRole>();
+  return {
+    async create(role) {
+      items.set(role.id, role);
+      return role;
+    },
+    async findById(id) {
+      return items.get(id) ?? null;
+    },
+    async listByOrganization(organizationId) {
+      return [...items.values()].filter((item) => item.organizationId === organizationId);
+    },
+    async save(role) {
+      items.set(role.id, role);
+      return role;
+    },
+    async delete(id) {
+      items.delete(id);
+    },
+  };
+}
+
+export function createMemoryAgencyClients(): AgencyClientRepository {
+  const items = new Map<string, AgencyClientLink>();
+  return {
+    async create(link) {
+      items.set(link.id, link);
+      return link;
+    },
+    async find(agencyOrganizationId, clientOrganizationId) {
+      return (
+        [...items.values()].find(
+          (item) =>
+            item.agencyOrganizationId === agencyOrganizationId &&
+            item.clientOrganizationId === clientOrganizationId,
+        ) ?? null
+      );
+    },
+    async listByAgency(agencyOrganizationId) {
+      return [...items.values()].filter((item) => item.agencyOrganizationId === agencyOrganizationId);
+    },
+    async listByClient(clientOrganizationId) {
+      return [...items.values()].filter((item) => item.clientOrganizationId === clientOrganizationId);
+    },
+  };
+}
+
+export function createMemoryAuditLogs(): AuditRepository {
+  const items = new Map<string, AuditLog>();
+  return {
+    async create(log) {
+      items.set(log.id, log);
+      return log;
+    },
+    async listByOrganization(organizationId) {
+      return [...items.values()].filter((item) => item.organizationId === organizationId);
+    },
+    async purgeExpired(now, policies) {
+      let removed = 0;
+      const policyByOrg = new Map(policies.map((item) => [item.organizationId, item.retentionDays]));
+      for (const [id, log] of items) {
+        if (!log.organizationId) continue;
+        const days = policyByOrg.get(log.organizationId);
+        if (days == null) continue;
+        const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        if (log.createdAt < cutoff) {
+          items.delete(id);
+          removed += 1;
+        }
+      }
+      return removed;
     },
   };
 }
@@ -179,6 +268,9 @@ export function createMemoryFollowers(): CalendarFollowerRepository {
     },
     async listByCalendar(calendarId) {
       return [...items.values()].filter((item) => item.calendarId === calendarId);
+    },
+    async listByUser(userId) {
+      return [...items.values()].filter((item) => item.userId === userId);
     },
     async countByCalendar(calendarId) {
       return [...items.values()].filter((item) => item.calendarId === calendarId).length;
@@ -295,6 +387,15 @@ export function createMemoryEvents(): EventRepository {
         return true;
       });
     },
+    async listByOrganization(organizationId, query?: EventListQuery) {
+      return [...items.values()].filter((item) => {
+        if (item.organizationId !== organizationId || item.deletedAt) return false;
+        if (query?.status && item.status !== query.status) return false;
+        if (query?.from && item.startsAt < query.from) return false;
+        if (query?.to && item.startsAt > query.to) return false;
+        return true;
+      });
+    },
     async listPublic(excludeId?: string) {
       return [...items.values()].filter(
         (item) => item.visibility === "public" && !item.deletedAt && item.id !== excludeId,
@@ -316,12 +417,22 @@ export function createMemoryRegistrations(): EventRegistrationRepository {
       items.set(registration.id, registration);
       return registration;
     },
-    async createIfCapacity(registration, capacity, quantity) {
-      const taken = [...items.values()]
-        .filter((item) => item.eventId === registration.eventId && ACTIVE.has(item.status))
-        .reduce((sum, item) => sum + item.quantity, 0);
+    async createIfCapacity(registration, capacity, quantity, ticketLimits) {
+      const active = [...items.values()].filter(
+        (item) => item.eventId === registration.eventId && ACTIVE.has(item.status),
+      );
+      const taken = active.reduce((sum, item) => sum + item.quantity, 0);
       if (capacity != null && taken + quantity > capacity) {
         return { ok: false, taken };
+      }
+      for (const limit of ticketLimits ?? []) {
+        if (limit.capacity == null) continue;
+        const typeTaken = active
+          .filter((item) => item.ticketTypeId === limit.ticketTypeId)
+          .reduce((sum, item) => sum + item.quantity, 0);
+        if (typeTaken + limit.quantity > limit.capacity) {
+          return { ok: false, taken: typeTaken };
+        }
       }
       items.set(registration.id, registration);
       return { ok: true, registration };
@@ -342,6 +453,12 @@ export function createMemoryRegistrations(): EventRegistrationRepository {
     },
     async listByEvent(eventId) {
       return [...items.values()].filter((item) => item.eventId === eventId);
+    },
+    async listByOrganization(organizationId) {
+      return [...items.values()].filter((item) => item.organizationId === organizationId);
+    },
+    async listByUser(userId) {
+      return [...items.values()].filter((item) => item.userId === userId);
     },
     async listAll() {
       return [...items.values()];
@@ -436,8 +553,14 @@ export function createMemoryOrders(): OrderRepository {
     async findById(id) {
       return orders.get(id) ?? null;
     },
+    async findByIdempotencyKey(key) {
+      return [...orders.values()].find((order) => order.idempotencyKey === key) ?? null;
+    },
     async listByEvent(eventId) {
       return [...orders.values()].filter((order) => order.eventId === eventId);
+    },
+    async listByOrganization(organizationId) {
+      return [...orders.values()].filter((order) => order.organizationId === organizationId);
     },
     async listItems(orderId) {
       return items.get(orderId) ?? [];

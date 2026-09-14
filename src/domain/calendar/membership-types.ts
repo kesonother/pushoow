@@ -74,8 +74,19 @@ export type PaymentAdapter = {
     currency: string;
     successUrl: string;
     cancelUrl: string;
-  }) => Promise<{ checkoutUrl: string; externalId: string }>;
-  refund: (input: { externalId: string; amountCents?: number }) => Promise<void>;
+    require3ds?: boolean;
+    applicationFeeCents?: number;
+    connectedAccountId?: string;
+    idempotencyKey?: string;
+    automaticTax?: boolean;
+    lineItems?: Array<{ name: string; quantity: number; unitAmountCents: number }>;
+  }) => Promise<{ checkoutUrl: string; externalId: string; paymentIntentId?: string | null }>;
+  refund: (input: {
+    externalId: string;
+    amountCents?: number;
+    reason?: string;
+    idempotencyKey?: string;
+  }) => Promise<{ refundId?: string } | void>;
 };
 
 export class PaymentNotConfiguredError extends DomainError {

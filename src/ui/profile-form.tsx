@@ -19,6 +19,10 @@ type ProfileValues = {
     website: string;
     linkedin: string;
     visibility: "private" | "organization" | "public";
+    appearOnRoster: boolean;
+    showAvatar: boolean;
+    showBio: boolean;
+    showSocial: boolean;
   };
 };
 
@@ -38,6 +42,10 @@ export function ProfileForm({
     visibility: string;
     save: string;
     privacyHint: string;
+    appearOnRoster: string;
+    showAvatar: string;
+    showBio: string;
+    showSocial: string;
   };
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +74,10 @@ export function ProfileForm({
           website: String(formData.get("attendeeWebsite") ?? "") || null,
           linkedin: String(formData.get("attendeeLinkedin") ?? "") || null,
           visibility: String(formData.get("attendeeVisibility") ?? "private"),
+          appearOnRoster: formData.get("appearOnRoster") === "on",
+          showAvatar: formData.get("showAvatar") === "on",
+          showBio: formData.get("showBio") === "on",
+          showSocial: formData.get("showSocial") === "on",
         },
       }),
     });
@@ -145,6 +157,22 @@ export function ProfileForm({
             <option value="organization">organization</option>
             <option value="public">public</option>
           </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="appearOnRoster" defaultChecked={initial.attendee.appearOnRoster} />
+          {labels.appearOnRoster}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="showAvatar" defaultChecked={initial.attendee.showAvatar} />
+          {labels.showAvatar}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="showBio" defaultChecked={initial.attendee.showBio} />
+          {labels.showBio}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="showSocial" defaultChecked={initial.attendee.showSocial} />
+          {labels.showSocial}
         </label>
       </fieldset>
       {error ? (

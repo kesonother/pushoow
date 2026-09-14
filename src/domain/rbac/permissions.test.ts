@@ -14,6 +14,7 @@ const ROLES: OrganizationRole[] = [
   "check_in_manager",
   "finance",
   "read_only",
+  "custom",
 ];
 
 describe("RBAC permissions", () => {
@@ -52,6 +53,17 @@ describe("RBAC permissions", () => {
     expect(hasPermission("editor", "events:publish")).toBe(true);
     expect(hasPermission("editor", "members:invite")).toBe(false);
     expect(hasPermission("editor", "finance:write")).toBe(false);
+    expect(hasPermission("editor", "checkin:manage")).toBe(true);
+  });
+
+  it("lets custom role actors use grant overlays instead of the built-in custom role", () => {
+    expect(hasPermission("custom", "events:create")).toBe(false);
+    expect(
+      hasPermission(
+        { role: "custom", permissions: ["organization:read", "events:create"] },
+        "events:create",
+      ),
+    ).toBe(true);
   });
 
   it("throws when a role lacks a permission", () => {

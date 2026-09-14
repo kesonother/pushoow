@@ -2,6 +2,7 @@ import { z } from "zod";
 import { requireActorPermission, resolveActor } from "@/api/authorize";
 import { jsonOk, readJson, withApi } from "@/api/handler";
 import { NotFoundError } from "@/domain/errors";
+import { normalizeCurrency } from "@/domain/payments/currencies";
 import { getServices } from "@/server/container";
 import { cuidGenerator } from "@/lib/ids";
 
@@ -32,7 +33,7 @@ export const POST = (request: Request, context: RouteContext) =>
     const event = await services.eventRepo.findById(eventId);
     if (!event || event.deletedAt) throw new NotFoundError("Event", eventId);
     const actor = requireActorPermission(
-      await resolveActor(services.memberships, user!.id, event.organizationId),
+      await resolveActor(services.access, user!.id, event.organizationId),
       "events:update",
     );
     const now = new Date();
@@ -42,7 +43,7 @@ export const POST = (request: Request, context: RouteContext) =>
       eventId,
       name: body.name,
       priceCents: body.priceCents,
-      currency: body.currency ?? "EUR",
+      currency: normalizeCurrency(body.currency ?? "EUR"),
       capacity: body.capacity ?? null,
       inventory: body.inventory ?? null,
       createdAt: now,

@@ -101,7 +101,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     calendarId: string,
     input: TierWriteInput,
   ): Promise<CalendarMembershipTier> {
-    assertPermission(actor.role, "calendars:update");
+    assertPermission(actor, "calendars:update");
     const calendar = await requireCalendar(actor, calendarId);
     validateTierInput(input);
     const existing = await deps.tiers.listByCalendar(calendar.id);
@@ -144,7 +144,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     tierId: string,
     input: Partial<TierWriteInput>,
   ): Promise<CalendarMembershipTier> {
-    assertPermission(actor.role, "calendars:update");
+    assertPermission(actor, "calendars:update");
     const tier = await deps.tiers.findById(tierId);
     if (!tier) throw new NotFoundError("CalendarMembershipTier", tierId);
     await requireCalendar(actor, tier.calendarId);
@@ -174,7 +174,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
   }
 
   async function deleteTier(actor: Actor, tierId: string): Promise<void> {
-    assertPermission(actor.role, "calendars:update");
+    assertPermission(actor, "calendars:update");
     const tier = await deps.tiers.findById(tierId);
     if (!tier) throw new NotFoundError("CalendarMembershipTier", tierId);
     await requireCalendar(actor, tier.calendarId);
@@ -257,7 +257,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     membershipId: string,
     decision: "approved" | "rejected",
   ): Promise<CalendarMember> {
-    assertPermission(actor.role, "members:update");
+    assertPermission(actor, "members:update");
     const member = await deps.members.findById(membershipId);
     if (!member) throw new NotFoundError("CalendarMember", membershipId);
     assertSameTenant(member, actor.organizationId, "CalendarMember");
@@ -346,7 +346,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
   }
 
   async function listMembers(actor: Actor, calendarId: string): Promise<CalendarMember[]> {
-    assertPermission(actor.role, "members:read");
+    assertPermission(actor, "members:read");
     await requireCalendar(actor, calendarId);
     return deps.members.listByCalendar(calendarId);
   }

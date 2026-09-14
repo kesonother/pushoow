@@ -9,10 +9,14 @@ import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { randomToken, sha256 } from "@/lib/token-crypto";
 
+export const ORGANIZATION_DOMAIN_KINDS = ["email", "site"] as const;
+export type OrganizationDomainKind = (typeof ORGANIZATION_DOMAIN_KINDS)[number];
+
 export type OrganizationDomain = {
   id: string;
   organizationId: string;
   domain: string;
+  kind: OrganizationDomainKind;
   tokenHash: string;
   verifiedAt: Date | null;
   autoJoin: boolean;
@@ -37,8 +41,17 @@ export function createDomainService(deps: {
   const clock = deps.clock ?? systemClock;
   const ids = deps.ids ?? cuidGenerator;
 
-  async function addDomain(actor: Actor, domainName: string) {
-    assertPermission(actor.role, "organization:update");
+  async function listDomains(actor: Actor) {
+    assertPermission(actor, "organization:read");
+    return deps.domains.listByOrganization(actor.organizationId);
+  }
+
+  async function addDomain(
+    actor: Actor,
+    domainName: string,
+    kind: OrganizationDomainKind = "email",
+  ) {
+    assertPermission(actor, "organization:update");
     const domain = domainName.trim().toLowerCase();
     if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) {
       throw new ValidationError("Invalid domain");
@@ -53,6 +66,7 @@ export function createDomainService(deps: {
       id: ids.id(),
       organizationId: actor.organizationId,
       domain,
+      kind,
       tokenHash: sha256(token),
       verifiedAt: null,
       autoJoin: false,
@@ -64,7 +78,7 @@ export function createDomainService(deps: {
   }
 
   async function verifyDomain(actor: Actor, domainId: string, token: string) {
-    assertPermission(actor.role, "organization:update");
+    assertPermission(actor, "organization:update");
     const records = await deps.domains.listByOrganization(actor.organizationId);
     const record = records.find((item) => item.id === domainId);
     if (!record || record.tokenHash !== sha256(token)) {
@@ -81,7 +95,7 @@ export function createDomainService(deps: {
     const domainName = input.email.split("@")[1]?.toLowerCase();
     if (!domainName) return null;
     const record = await deps.domains.findByDomain(domainName);
-    if (!record?.verifiedAt || !record.autoJoin) return null;
+    if (!record?.verifiedAt || !record.autoJoin || record.kind !== "email") return null;
     const already = await deps.members.findByUserAndOrganization(
       input.userId,
       record.organizationId,
@@ -98,5 +112,5 @@ export function createDomainService(deps: {
     });
   }
 
-  return { addDomain, verifyDomain, tryAutoJoin };
+  return { listDomains, addDomain, verifyDomain, tryAutoJoin };
 }
