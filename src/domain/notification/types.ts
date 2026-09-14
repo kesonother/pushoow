@@ -25,6 +25,12 @@ export const EMAIL_TEMPLATE_KEYS = [
   "cancellation",
   "receipt",
   "subscriber_welcome",
+  "billing_renewal",
+  "billing_cancellation",
+  "billing_payment_failed",
+  "billing_refund",
+  "support_ticket_opened",
+  "support_ticket_reply",
 ] as const;
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number];
 
@@ -212,7 +218,17 @@ export function normalizeAddress(channel: NotificationChannel, value: string): s
 }
 
 export function templateCategory(key: string): NotificationCategory {
-  if (key === "registration_confirmation" || key === "receipt" || key === "confirmation") {
+  if (
+    key === "registration_confirmation" ||
+    key === "receipt" ||
+    key === "confirmation" ||
+    key === "billing_renewal" ||
+    key === "billing_cancellation" ||
+    key === "billing_payment_failed" ||
+    key === "billing_refund" ||
+    key === "support_ticket_opened" ||
+    key === "support_ticket_reply"
+  ) {
     return "transactional";
   }
   if (key === "reminder_24h" || key === "reminder_1h" || key === "reminder") return "reminder";

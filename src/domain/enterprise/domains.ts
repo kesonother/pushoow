@@ -3,6 +3,8 @@ import type { Actor } from "@/domain/rbac/permissions";
 import { assertPermission } from "@/domain/rbac/permissions";
 import type { MembershipRepository, OrganizationMember } from "@/domain/organization/types";
 import type { OrganizationRole } from "@/domain/rbac/roles";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { assertFeature } from "@/domain/billing/entitlements";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
@@ -35,6 +37,7 @@ export type DomainRepository = {
 export function createDomainService(deps: {
   domains: DomainRepository;
   members: MembershipRepository;
+  entitlements?: EntitlementResolver;
   clock?: Clock;
   ids?: IdGenerator;
 }) {
@@ -52,6 +55,9 @@ export function createDomainService(deps: {
     kind: OrganizationDomainKind = "email",
   ) {
     assertPermission(actor, "organization:update");
+    if (kind === "site" && deps.entitlements) {
+      assertFeature(await deps.entitlements.forOrganization(actor.organizationId), "customDomainEnabled");
+    }
     const domain = domainName.trim().toLowerCase();
     if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) {
       throw new ValidationError("Invalid domain");

@@ -18,6 +18,10 @@ export const JOB_TYPES = [
   "privacy.deletion.process",
   "import.purge",
   "audit.purge",
+  "billing.renewal.process",
+  "billing.renewal.notify",
+  "billing.grace.expire",
+  "support.sla.tick",
 ] as const;
 
 export type JobType = (typeof JOB_TYPES)[number];

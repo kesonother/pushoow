@@ -171,6 +171,7 @@ export type StripeConnectPort = {
     require3ds?: boolean;
     automaticTax?: boolean;
     lineItems?: Array<{ name: string; quantity: number; unitAmountCents: number }>;
+    metadata?: Record<string, string>;
   }) => Promise<{ checkoutUrl: string; externalId: string; paymentIntentId?: string | null }>;
   refund: (input: {
     paymentIntentId?: string;

@@ -14,11 +14,13 @@ export const GET = (request: Request, context: RouteContext) =>
     const { organizationId } = await context.params;
     const services = getServices();
     await resolveActor(services.access, user!.id, organizationId, user!.emailVerified);
+    const entitlements = await services.billing.entitlementsFor(organizationId);
     return jsonOk(
       {
         saml: { configured: unconfiguredSsoAdapter("saml").isConfigured() },
         oidc: { configured: unconfiguredSsoAdapter("oidc").isConfigured() },
         scim: { configured: false },
+        enabled: entitlements.ssoEnabled,
       },
       { requestId },
     );
@@ -29,6 +31,10 @@ export const POST = (request: Request, context: RouteContext) =>
     const { organizationId } = await context.params;
     const services = getServices();
     await resolveActor(services.access, user!.id, organizationId, user!.emailVerified);
+    const entitlements = await services.billing.entitlementsFor(organizationId);
+    if (!entitlements.ssoEnabled) {
+      throw new ValidationError("SSO is not included in the current plan");
+    }
     const protocol = url.searchParams.get("protocol") === "oidc" ? "oidc" : "saml";
     try {
       return Response.json(

@@ -36,6 +36,8 @@ import { emitIntegrationEvent } from "@/domain/integration/emit";
 import type { IntegrationEmitter } from "@/domain/integration/types";
 import { emitPublicWebhook } from "@/domain/public-api/service";
 import type { PublicWebhookEvent } from "@/domain/public-api/types";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { assertQuota } from "@/domain/billing/entitlements";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
@@ -86,6 +88,7 @@ export type RegistrationServiceDeps = {
   captcha?: CaptchaVerifier;
   integrations?: IntegrationEmitter;
   publicWebhooks?: { emit: (event: PublicWebhookEvent) => Promise<void> };
+  entitlements?: EntitlementResolver;
   clientIp?: string | null;
   ipCountry?: string | null;
   billingCountry?: string | null;
@@ -106,6 +109,25 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
   const clock = deps.clock ?? systemClock;
   const ids = deps.ids ?? cuidGenerator;
   const payments = deps.payments ?? unconfiguredPaymentAdapter;
+
+  async function assertRegistrantEntitlement(organizationId: string, eventId: string, quantity: number) {
+    if (!deps.entitlements) return;
+    const entitlements = await deps.entitlements.forOrganization(organizationId);
+    const taken = await deps.registrations.countActive(eventId);
+    assertQuota({
+      used: taken,
+      increment: quantity,
+      limit: entitlements.maxRegistrantsPerEvent,
+      metric: "registrants",
+    });
+  }
+
+  async function ticketingFeeBps(organizationId: string) {
+    if (deps.entitlements) {
+      return (await deps.entitlements.forOrganization(organizationId)).ticketingPlatformFeeBps;
+    }
+    return deps.ledger?.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS;
+  }
 
   async function requireEvent(eventId: string): Promise<Event> {
     const event = await deps.events.findById(eventId);
@@ -186,6 +208,7 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
 
     const quantity = input.quantity ?? 1;
     if (quantity < 1) throw new ValidationError("Quantity must be at least 1");
+    await assertRegistrantEntitlement(event.organizationId, event.id, quantity);
 
     const tickets = await deps.tickets.listByEvent(event.id);
     const now = clock.now();
@@ -365,7 +388,7 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
         discountCents: discount,
         taxCents: tax.taxCents,
         taxConfigured: taxPort.isConfigured(),
-        platformFeeBps: deps.ledger?.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
+        platformFeeBps: await ticketingFeeBps(event.organizationId),
       }),
       ticketRows,
       addOns,
@@ -459,6 +482,7 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
 
     if (paymentQuote.totalCents > 0 && !payments.isConfigured()) throw new PaymentNotConfiguredError();
     const quantity = ticketRows.reduce((sum, row) => sum + row.quantity, 0);
+    await assertRegistrantEntitlement(event.organizationId, event.id, quantity);
     const orderId = ids.id();
     const reserved = await deps.registrations.createIfCapacity(
       {

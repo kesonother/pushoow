@@ -35,18 +35,23 @@ describe("RBAC permissions", () => {
     expect(hasPermission("check_in_manager", "events:update")).toBe(false);
     expect(hasPermission("check_in_manager", "finance:read")).toBe(false);
     expect(hasPermission("check_in_manager", "members:invite")).toBe(false);
+    expect(hasPermission("check_in_manager", "support:read")).toBe(false);
   });
 
   it("gives finance billing access without event mutation", () => {
     expect(hasPermission("finance", "finance:write")).toBe(true);
     expect(hasPermission("finance", "events:publish")).toBe(false);
     expect(hasPermission("finance", "checkin:manage")).toBe(false);
+    expect(hasPermission("finance", "support:write")).toBe(true);
+    expect(hasPermission("finance", "support:manage")).toBe(false);
   });
 
   it("keeps read-only users from mutating data", () => {
     expect(hasPermission("read_only", "organization:read")).toBe(true);
     expect(hasPermission("read_only", "events:create")).toBe(false);
     expect(hasPermission("read_only", "calendars:update")).toBe(false);
+    expect(hasPermission("read_only", "support:read")).toBe(true);
+    expect(hasPermission("read_only", "support:write")).toBe(false);
   });
 
   it("lets editors manage events but not members or billing", () => {
@@ -54,6 +59,8 @@ describe("RBAC permissions", () => {
     expect(hasPermission("editor", "members:invite")).toBe(false);
     expect(hasPermission("editor", "finance:write")).toBe(false);
     expect(hasPermission("editor", "checkin:manage")).toBe(true);
+    expect(hasPermission("editor", "support:write")).toBe(true);
+    expect(hasPermission("editor", "support:manage")).toBe(false);
   });
 
   it("lets custom role actors use grant overlays instead of the built-in custom role", () => {

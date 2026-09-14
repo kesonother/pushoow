@@ -15,12 +15,15 @@ import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { randomToken, sha256 } from "@/lib/token-crypto";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { assertQuota } from "@/domain/billing/entitlements";
 
 export type MembershipServiceDeps = {
   members: MembershipRepository;
   invitations: InvitationRepository;
   users: UserDirectory;
   customRoles?: CustomRoleRepository;
+  entitlements?: EntitlementResolver;
   clock?: Clock;
   ids?: IdGenerator;
 };
@@ -71,6 +74,13 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     assertPermission(actor, "members:invite");
     if (!actorCanAssign(actor, input.role)) {
       throw new ForbiddenError("You cannot invite a member with that role");
+    }
+
+    if ((input.role === "admin" || input.role === "owner") && deps.entitlements) {
+      const entitlements = await deps.entitlements.forOrganization(actor.organizationId);
+      const members = await deps.members.listByOrganization(actor.organizationId);
+      const used = members.filter((member) => member.role === "admin" || member.role === "owner").length;
+      assertQuota({ used, increment: 1, limit: entitlements.maxAdmins, metric: "admins" });
     }
 
     const email = normalizeEmail(input.email);

@@ -27,6 +27,9 @@ export const PERMISSIONS = [
   "audit:read",
   "integrations:manage",
   "agency:manage_clients",
+  "support:read",
+  "support:write",
+  "support:manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -50,6 +53,8 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
     "registrants:read",
     "registrants:manage",
     "exports:create",
+    "support:read",
+    "support:write",
   ],
   check_in_manager: [
     "organization:read",
@@ -64,6 +69,8 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
     "registrants:read",
     "exports:create",
     "audit:read",
+    "support:read",
+    "support:write",
   ],
   read_only: [
     "organization:read",
@@ -72,6 +79,7 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, readonly Permission[]> = {
     "registrants:read",
     "finance:read",
     "audit:read",
+    "support:read",
   ],
 };
 

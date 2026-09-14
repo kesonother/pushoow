@@ -53,6 +53,7 @@ export function createPaymentService(deps: {
   tax: TaxPort;
   notify?: PaymentNotifier;
   publicWebhooks?: { emit: (event: PublicWebhookEvent) => Promise<void> };
+  onUnmatchedStripeEvent?: (input: { type: string; object: Record<string, unknown> }) => Promise<void>;
   appUrl: string;
   clock?: Clock;
   ids?: IdGenerator;
@@ -183,13 +184,14 @@ export function createPaymentService(deps: {
 
     if (event.type === "checkout.session.completed" && order && payment) {
       await markPaid(order, payment);
-    }
-    if (
+    } else if (
       (event.type === "checkout.session.expired" || event.type === "payment_intent.payment_failed") &&
       order &&
       order.status === "pending"
     ) {
       await markFailed(order, payment);
+    } else if (!order && !payment && deps.onUnmatchedStripeEvent) {
+      await deps.onUnmatchedStripeEvent({ type: event.type, object });
     }
     if (event.type === "account.updated") {
       const stripeAccountId = typeof object.id === "string" ? object.id : "";

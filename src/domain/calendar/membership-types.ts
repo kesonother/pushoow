@@ -80,6 +80,7 @@ export type PaymentAdapter = {
     idempotencyKey?: string;
     automaticTax?: boolean;
     lineItems?: Array<{ name: string; quantity: number; unitAmountCents: number }>;
+    metadata?: Record<string, string>;
   }) => Promise<{ checkoutUrl: string; externalId: string; paymentIntentId?: string | null }>;
   refund: (input: {
     externalId: string;

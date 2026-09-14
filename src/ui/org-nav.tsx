@@ -20,6 +20,8 @@ export function OrgNav({
     { href: `${base}/settings`, label: labels.settings, show: hasPermission(actor, "organization:read") },
     { href: `${base}/audit`, label: labels.audit, show: hasPermission(actor, "audit:read") },
     { href: `${base}/payments`, label: labels.payments, show: hasPermission(actor, "finance:read") },
+    { href: `${base}/billing`, label: labels.billing, show: hasPermission(actor, "finance:read") },
+    { href: `${base}/support`, label: labels.support, show: hasPermission(actor, "support:read") },
     {
       href: `${base}/agency`,
       label: labels.agency,

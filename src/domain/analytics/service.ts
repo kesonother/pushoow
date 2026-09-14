@@ -40,6 +40,8 @@ import { canAccessFullDashboard } from "@/domain/rbac/dashboard";
 import type { Actor } from "@/domain/rbac/permissions";
 import { assertPermission, hasPermission } from "@/domain/rbac/permissions";
 import { assertSameTenant } from "@/domain/tenant/isolation";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { analyticsPlanFromEntitlements } from "@/domain/billing/catalog";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
@@ -61,6 +63,7 @@ export function createAnalyticsService(deps: {
   pageViews: PageViewRepository;
   snapshots: SnapshotRepository;
   plans: AnalyticsPlanRepository;
+  entitlements?: EntitlementResolver;
   secret: string;
   enqueueRefresh?: (input: { organizationId?: string; eventId?: string }) => Promise<void>;
   clock?: Clock;
@@ -86,6 +89,10 @@ export function createAnalyticsService(deps: {
   }
 
   async function planFor(organizationId: string): Promise<AnalyticsPlan> {
+    if (deps.entitlements) {
+      const entitlements = await deps.entitlements.forOrganization(organizationId);
+      return analyticsPlanFromEntitlements(entitlements.planId, entitlements);
+    }
     return (await deps.plans.find(organizationId))?.plan ?? "free";
   }
 
@@ -279,6 +286,9 @@ export function createAnalyticsService(deps: {
       throw new ForbiddenError("Check-in managers cannot access advanced analytics");
     }
     const plan = await planFor(actor.organizationId);
+    const entitlements = deps.entitlements
+      ? await deps.entitlements.forOrganization(actor.organizationId)
+      : null;
     const events = await eventsForOrg(actor.organizationId);
     const [registrations, attributions, views, attendanceByEvent, payments, orders, deliveries] = await Promise.all([
       registrationsForOrg(actor.organizationId, events),
@@ -291,6 +301,7 @@ export function createAnalyticsService(deps: {
     ]);
     return buildAdvancedAnalytics({
       plan,
+      available: entitlements ? entitlements.advancedAnalytics : undefined,
       events,
       registrations,
       attributions,

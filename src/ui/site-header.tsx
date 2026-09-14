@@ -22,6 +22,9 @@ export function SiteHeader({
           <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/calendars">
             {t.nav.calendars}
           </Link>
+          <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/status">
+            {t.nav.status}
+          </Link>
           {signedIn ? (
             <>
               <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/me">

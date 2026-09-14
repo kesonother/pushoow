@@ -43,6 +43,30 @@ const EMAIL_V1: Record<EmailTemplateKey, { subject: string; body: string }> = {
     subject: "Welcome to {{calendarName}}",
     body: "You are subscribed to {{calendarName}}. You can unsubscribe at any time.",
   },
+  billing_renewal: {
+    subject: "Your Pushoow subscription renews soon",
+    body: "{{details}}",
+  },
+  billing_cancellation: {
+    subject: "Your Pushoow subscription cancellation is confirmed",
+    body: "{{details}}",
+  },
+  billing_payment_failed: {
+    subject: "Payment failed for your Pushoow subscription",
+    body: "{{details}}",
+  },
+  billing_refund: {
+    subject: "Your Pushoow refund was issued",
+    body: "{{details}}",
+  },
+  support_ticket_opened: {
+    subject: "New support ticket",
+    body: "{{details}}",
+  },
+  support_ticket_reply: {
+    subject: "New reply on a support ticket",
+    body: "{{details}}",
+  },
 };
 
 const SMS_V1: Record<string, string> = {

@@ -120,6 +120,25 @@ import {
   createDrizzlePublicWebhookDeliveryRepository,
   createDrizzlePublicWebhookEndpointRepository,
 } from "@/db/repositories/public-api-repo";
+import { createBillingService } from "@/domain/billing/service";
+import { createSupportService } from "@/domain/support/service";
+import {
+  createDrizzleCancellationRepository,
+  createDrizzleInvoiceRepository,
+  createDrizzlePaymentMethodRepository,
+  createDrizzleSubscriptionItemRepository,
+  createDrizzleSubscriptionRepository,
+  createDrizzleUsageRepository,
+} from "@/db/repositories/billing-repo";
+import {
+  createDrizzleStatusIncidentRepository,
+  createDrizzleStatusMaintenanceRepository,
+  createDrizzleStatusUptimeRepository,
+  createDrizzleSupportTicketRepository,
+  createDrizzleTicketAssignmentRepository,
+  createDrizzleTicketEventRepository,
+  createDrizzleTicketMessageRepository,
+} from "@/db/repositories/support-repo";
 import {
   createDrizzleAnalyticsPlanRepository,
   createDrizzleAttributionRepository,
@@ -214,6 +233,68 @@ export function getServices() {
   const issuedTickets = createDrizzleIssuedTicketRepository(db);
   const stripeWebhooks = createDrizzleStripeWebhookRepository(db);
   const taxRecords = createDrizzleTaxRecordRepository(db);
+  const billing = createBillingService({
+    organizations,
+    subscriptions: createDrizzleSubscriptionRepository(db),
+    items: createDrizzleSubscriptionItemRepository(db),
+    invoices: createDrizzleInvoiceRepository(db),
+    usage: createDrizzleUsageRepository(db),
+    paymentMethods: createDrizzlePaymentMethodRepository(db),
+    cancellations: createDrizzleCancellationRepository(db),
+    tax,
+    stripe,
+    appUrl,
+    notify: {
+      async notify(input) {
+        const orgMembers = await members.listByOrganization(input.organizationId);
+        for (const member of orgMembers) {
+          if (member.role === "check_in_manager" || member.role === "read_only") continue;
+          const user = await users.findById(member.userId);
+          if (!user?.email) continue;
+          await notifications.enqueue({
+            channel: "email",
+            to: user.email,
+            templateKey: input.templateKey,
+            subjectOverride: input.subject,
+            bodyOverride: input.body,
+            vars: { details: input.body },
+            idempotencyKey: `${input.idempotencyKey}:${user.id}`,
+          });
+        }
+      },
+    },
+  });
+  const entitlements = { forOrganization: (organizationId: string) => billing.entitlementsFor(organizationId) };
+  const support = createSupportService({
+    tickets: createDrizzleSupportTicketRepository(db),
+    messages: createDrizzleTicketMessageRepository(db),
+    assignments: createDrizzleTicketAssignmentRepository(db),
+    events: createDrizzleTicketEventRepository(db),
+    incidents: createDrizzleStatusIncidentRepository(db),
+    maintenance: createDrizzleStatusMaintenanceRepository(db),
+    uptime: createDrizzleStatusUptimeRepository(db),
+    entitlements,
+    members,
+    notify: {
+      async notify(input) {
+        const orgMembers = await members.listByOrganization(input.organizationId);
+        for (const member of orgMembers) {
+          if (member.role !== "owner" && member.role !== "admin") continue;
+          const user = await users.findById(member.userId);
+          if (!user?.email) continue;
+          await notifications.enqueue({
+            channel: "email",
+            to: user.email,
+            templateKey: input.templateKey,
+            subjectOverride: input.subject,
+            bodyOverride: input.body,
+            vars: { details: input.body },
+            idempotencyKey: `support:${input.ticketId}:${input.templateKey}:${user.id}`,
+          });
+        }
+      },
+    },
+  });
   const publicApi = createPublicApiService({
     keys: createDrizzlePublicApiKeyRepository(db),
     clients: createDrizzlePublicOAuthClientRepository(db),
@@ -221,6 +302,7 @@ export function getServices() {
     endpoints: createDrizzlePublicWebhookEndpointRepository(db),
     deliveries: createDrizzlePublicWebhookDeliveryRepository(db),
     plans: createDrizzleAnalyticsPlanRepository(db),
+    entitlements,
     secret,
     enqueue: jobs.enqueue,
   });
@@ -237,6 +319,7 @@ export function getServices() {
     stripe,
     tax,
     publicWebhooks: publicApi,
+    onUnmatchedStripeEvent: (event) => billing.handleStripeEvent(event).then(() => undefined),
     appUrl,
     notify: {
       async notify(input) {
@@ -300,6 +383,7 @@ export function getServices() {
     captcha,
     integrations,
     publicWebhooks: publicApi,
+    entitlements,
     notify: {
       async notify(input) {
         const templateKey =
@@ -340,6 +424,8 @@ export function getServices() {
     organizations,
     members,
     calendars,
+    entitlements,
+    onCreated: (organizationId) => billing.ensureFreeSubscription(organizationId).then(() => undefined),
   });
   const calendarService = createCalendarService({
     calendars,
@@ -529,7 +615,7 @@ export function getServices() {
     feeds: createCalendarFeedService({ calendars, events }),
     followerNotify,
     memberships: members,
-    members: createOrgMembershipService({ members, invitations, users, customRoles }),
+    members: createOrgMembershipService({ members, invitations, users, customRoles, entitlements }),
     invitations,
     profiles: createProfileService({
       profiles,
@@ -539,7 +625,7 @@ export function getServices() {
       tokens,
       signer: createHmacTokenSigner(secret),
     }),
-    domains: createDomainService({ domains, members }),
+    domains: createDomainService({ domains, members, entitlements }),
     moderation: createModerationService({
       moderation,
       notify: async (action) => {
@@ -568,6 +654,7 @@ export function getServices() {
       pageViews: createDrizzlePageViewRepository(db),
       snapshots: createDrizzleSnapshotRepository(db),
       plans: createDrizzleAnalyticsPlanRepository(db),
+      entitlements,
       secret,
       enqueueRefresh: async (input) => {
         await jobs.enqueue({
@@ -585,5 +672,7 @@ export function getServices() {
     imports,
     integrations,
     publicApi,
+    billing,
+    support,
   };
 }

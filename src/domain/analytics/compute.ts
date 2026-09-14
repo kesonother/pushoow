@@ -239,6 +239,7 @@ export function buildEventDashboard(input: {
 
 export function buildAdvancedAnalytics(input: {
   plan: AdvancedAnalytics["plan"];
+  available?: boolean;
   events: Event[];
   registrations: EventRegistration[];
   attributions: RegistrationAttribution[];
@@ -248,7 +249,7 @@ export function buildAdvancedAnalytics(input: {
   orders: EventOrder[];
   deliveries: NotificationDelivery[];
 }): AdvancedAnalytics {
-  const available = input.plan === "pro" || input.plan === "plus";
+  const available = input.available ?? (input.plan === "pro" || input.plan === "plus");
   const empty: AdvancedAnalytics = {
     available,
     plan: input.plan,

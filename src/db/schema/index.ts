@@ -15,3 +15,5 @@ export * from "@/db/schema/analytics";
 export * from "@/db/schema/imports";
 export * from "@/db/schema/integrations";
 export * from "@/db/schema/public-api";
+export * from "@/db/schema/billing";
+export * from "@/db/schema/support";

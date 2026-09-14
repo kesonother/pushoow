@@ -23,6 +23,8 @@ import {
   type OrganizationRepository,
 } from "@/domain/organization/types";
 import type { CalendarRepository } from "@/domain/calendar/types";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { remainingQuota } from "@/domain/billing/catalog";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
@@ -33,6 +35,8 @@ export type OrganizationServiceDeps = {
   organizations: OrganizationRepository;
   members: MembershipRepository;
   calendars?: CalendarRepository;
+  entitlements?: EntitlementResolver;
+  onCreated?: (organizationId: string) => Promise<void>;
   clock?: Clock;
   ids?: IdGenerator;
 };
@@ -63,9 +67,15 @@ export function createOrganizationService(deps: OrganizationServiceDeps) {
           (calendar) => !calendar.deletedAt,
         )
       : [];
-    const limit = calendarLimitFor(organization.functionalLevel);
+    const entitlements = deps.entitlements
+      ? await deps.entitlements.forOrganization(organizationId)
+      : null;
+    const rawLimit = entitlements
+      ? entitlements.maxCalendars
+      : calendarLimitFor(organization.functionalLevel);
     const used = calendars.length;
-    return { used, limit, remaining: Math.max(0, limit - used) };
+    const limit = rawLimit < 0 ? Number.MAX_SAFE_INTEGER : rawLimit;
+    return { used, limit, remaining: remainingQuota(used, rawLimit) };
   }
 
   async function createOrganization(input: {
@@ -112,6 +122,8 @@ export function createOrganizationService(deps: OrganizationServiceDeps) {
       createdAt: now,
       updatedAt: now,
     });
+
+    await deps.onCreated?.(organization.id);
 
     return organization;
   }

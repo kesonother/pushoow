@@ -26,6 +26,9 @@ import type { Actor } from "@/domain/rbac/permissions";
 import { assertPermission } from "@/domain/rbac/permissions";
 import { canAccessFullDashboard } from "@/domain/rbac/dashboard";
 import { assertSameTenant } from "@/domain/tenant/isolation";
+import type { EntitlementResolver } from "@/domain/billing/entitlements";
+import { assertFeature } from "@/domain/billing/entitlements";
+import { publicApiPlanFromEntitlements } from "@/domain/billing/catalog";
 import type { JobType } from "@/jobs/types";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
@@ -55,6 +58,7 @@ export type PublicApiServiceDeps = {
   endpoints: PublicWebhookEndpointRepository;
   deliveries: PublicWebhookDeliveryRepository;
   plans?: AnalyticsPlanRepository;
+  entitlements?: EntitlementResolver;
   secret: string;
   http?: PublicApiHttp;
   enqueue?: (input: {
@@ -170,11 +174,27 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
     }
   }
 
+  async function resolvePlan(organizationId: string, fallback?: PublicApiPlan): Promise<PublicApiPlan> {
+    if (deps.entitlements) {
+      const entitlements = await deps.entitlements.forOrganization(organizationId);
+      return publicApiPlanFromEntitlements(entitlements.planId, entitlements);
+    }
+    if (fallback) return fallback;
+    const analytics = await deps.plans?.find(organizationId);
+    return planFromAnalytics(analytics?.plan);
+  }
+
   async function createKey(actor: Actor, input: { name: string; scopes?: PublicApiScope[]; plan?: PublicApiPlan }) {
     assertManage(actor);
-    const analytics = await deps.plans?.find(actor.organizationId);
-    const plan = input.plan ?? planFromAnalytics(analytics?.plan);
+    if (deps.entitlements) {
+      const entitlements = await deps.entitlements.forOrganization(actor.organizationId);
+      assertFeature(entitlements, "apiEnabled");
+    }
+    const plan = input.plan ?? (await resolvePlan(actor.organizationId));
     const plaintext = `pk_live_${randomToken(24)}`;
+    const entitlements = deps.entitlements
+      ? await deps.entitlements.forOrganization(actor.organizationId)
+      : null;
     const record = await deps.keys.create({
       id: ids.id(),
       organizationId: actor.organizationId,
@@ -183,7 +203,11 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
       prefix: plaintext.slice(0, 12),
       scopes: input.scopes?.length ? input.scopes : [...PUBLIC_API_SCOPES],
       plan,
-      rateLimitPerMinute: plan === "enterprise" ? 10_000 : null,
+      rateLimitPerMinute: entitlements
+        ? entitlements.apiRequestsPerMinute || null
+        : plan === "enterprise"
+          ? 10_000
+          : null,
       lastUsedAt: null,
       revokedAt: null,
       createdAt: clock.now(),
@@ -284,7 +308,7 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
     }
     await deps.codes.save({ ...record, consumedAt: clock.now() });
     const analytics = await deps.plans?.find(client.organizationId);
-    const plan = planFromAnalytics(analytics?.plan);
+    const plan = await resolvePlan(client.organizationId, planFromAnalytics(analytics?.plan));
     const now = clock.now();
     const accessToken = signAccess({
       typ: "public_api",

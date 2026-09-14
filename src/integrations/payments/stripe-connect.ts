@@ -81,13 +81,14 @@ export function createStripeConnectAdapter(input: {
           success_url: input.successUrl,
           cancel_url: input.cancelUrl,
           client_reference_id: orderId,
+          metadata: input.metadata,
           line_items: lineItems,
           automatic_tax: input.automaticTax ? { enabled: true } : undefined,
           payment_method_options: input.require3ds
             ? { card: { request_three_d_secure: "any" } }
             : undefined,
           payment_intent_data: {
-            metadata: { orderId },
+            metadata: { orderId, ...input.metadata },
             ...(connectedAccountId
               ? {
                   application_fee_amount: applicationFeeCents,

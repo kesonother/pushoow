@@ -87,6 +87,18 @@ async function main() {
       "audit.purge": async () => {
         await services.audit.purgeExpired();
       },
+      "billing.renewal.process": async () => {
+        await services.billing.processRenewals();
+      },
+      "billing.renewal.notify": async () => {
+        await services.billing.processRenewalNotices();
+      },
+      "billing.grace.expire": async () => {
+        await services.billing.processGraceExpiry();
+      },
+      "support.sla.tick": async () => {
+        await services.support.processSlaTick();
+      },
       "sync.run": async (job) => {
         await services.integrations.processSyncJob(job.payload);
       },
