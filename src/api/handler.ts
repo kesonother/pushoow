@@ -3,8 +3,10 @@ import { jsonError } from "@/api/errors";
 import { consumeRateLimit } from "@/api/rate-limit";
 import { ValidationError } from "@/domain/errors";
 import { cuidGenerator } from "@/lib/ids";
-import { childLogger } from "@/lib/logger";
+import { requestLogger } from "@/lib/logger";
 import { getEnv } from "@/lib/env";
+import { recordHttpRequest } from "@/observability/events";
+import { tenantFromPath } from "@/observability/refs";
 
 export type ApiUser = {
   id: string;
@@ -55,12 +57,21 @@ export function withApi(
 
   return async (request: Request) => {
     const requestId = requestIdFrom(request);
-    const log = childLogger({ requestId, path: new URL(request.url).pathname });
+    const pathname = new URL(request.url).pathname;
+    const startedAt = Date.now();
+    let user: ApiUser | null = null;
+    const log = () =>
+      requestLogger({
+        requestId,
+        userId: user?.id,
+        tenantId: tenantFromPath(pathname),
+        service: "api",
+        path: pathname,
+      });
 
     try {
       assertSafeOrigin(request);
 
-      let user: ApiUser | null = null;
       if (authMode !== "none") {
         const { requireUser } = await import("@/auth/session");
         if (authMode === "required") {
@@ -104,22 +115,31 @@ export function withApi(
 
       const response = await handler(ctx);
       response.headers.set("x-request-id", requestId);
+      recordHttpRequest({
+        pathname,
+        status: response.status,
+        startedAt,
+        requestId,
+        userId: user?.id,
+        log: log(),
+      });
       return response;
     } catch (error) {
-      if (error instanceof ZodError) {
-        log.warn({ issues: error.issues }, "Validation failed");
-        return jsonError(
-          new ValidationError("Invalid request body", { issues: error.flatten() }),
-          requestId,
-        );
-      }
-
-      if (error instanceof ValidationError || (error && typeof error === "object" && "status" in error && (error as { status: number }).status < 500)) {
-        log.warn({ err: error }, "Handled API error");
-      } else {
-        log.error({ err: error }, "Unhandled API error");
-      }
-      return jsonError(error, requestId);
+      const mapped =
+        error instanceof ZodError
+          ? new ValidationError("Invalid request body", { issues: error.flatten() })
+          : error;
+      const response = jsonError(mapped, requestId);
+      recordHttpRequest({
+        pathname,
+        status: response.status,
+        startedAt,
+        requestId,
+        userId: user?.id,
+        error: mapped,
+        log: log(),
+      });
+      return response;
     }
   };
 }

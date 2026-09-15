@@ -61,6 +61,7 @@ export type Entitlements = {
   supportSlaHours: number;
   advancedAnalytics: boolean;
   ticketingPlatformFeeBps: number;
+  aiEnabled: boolean;
 };
 
 export type EntitlementKey = keyof Entitlements;

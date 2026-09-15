@@ -1,6 +1,7 @@
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, negotiateLocale } from "@/i18n/config";
+import { REFERRAL_COOKIE, REFERRAL_CODE_PATTERN } from "@/domain/referral/types";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from "@/i18n/config";
 
 export function proxy(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -18,10 +19,21 @@ export function proxy(request: NextRequest) {
 
   const locale = request.cookies.get(LOCALE_COOKIE)?.value;
   if (!isLocale(locale)) {
-    const accepted = request.headers.get("accept-language")?.split(",")[0]?.split("-")[0];
-    response.cookies.set(LOCALE_COOKIE, isLocale(accepted) ? accepted : DEFAULT_LOCALE, {
+    const negotiated = negotiateLocale(request.headers.get("accept-language"), DEFAULT_LOCALE);
+    response.cookies.set(LOCALE_COOKIE, negotiated, {
       path: "/",
       sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+
+  const ref = request.nextUrl.searchParams.get("ref")?.trim().toUpperCase();
+  if (ref && REFERRAL_CODE_PATTERN.test(ref) && !request.cookies.get(REFERRAL_COOKIE)) {
+    response.cookies.set(REFERRAL_COOKIE, ref, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 30,
     });
   }
 

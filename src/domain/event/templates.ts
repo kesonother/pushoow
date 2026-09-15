@@ -1,4 +1,5 @@
 export const EVENT_TEMPLATE_IDS = [
+  "first_meetup",
   "meetup",
   "dinner",
   "conference",
@@ -27,6 +28,19 @@ export type EventTemplate = {
 };
 
 const TEMPLATES: EventTemplate[] = [
+  {
+    id: "first_meetup",
+    name: "First Meetup",
+    description: "Starter meetup to publish and share",
+    defaults: {
+      durationMinutes: 120,
+      locationKind: "physical",
+      tags: ["meetup", "first"],
+      capacity: 80,
+      registrationMode: "open_rsvp",
+      waitlistEnabled: true,
+    },
+  },
   {
     id: "meetup",
     name: "Meetup",

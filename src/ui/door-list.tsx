@@ -29,7 +29,7 @@ export function DoorList({
         {guests.map((guest, index) => (
           <li
             key={`${guest.displayName}-${guest.ticketCode ?? index}`}
-            className="flex items-center justify-between gap-4 break-inside-avoid border-b border-zinc-200 pb-3"
+            className="flex items-center justify-between gap-4 break-inside-avoid border-b border-[#E8E8E8] pb-3"
           >
             <div>
               <p className="text-lg font-medium">{guest.displayName}</p>
@@ -44,7 +44,7 @@ export function DoorList({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={guest.qrImage} alt="" width={96} height={96} />
             ) : (
-              <div className="flex size-24 items-center justify-center bg-zinc-100 text-xs text-zinc-500">—</div>
+              <div className="flex size-24 items-center justify-center bg-zinc-100 text-xs text-zinc-600">—</div>
             )}
           </li>
         ))}

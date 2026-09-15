@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { useI18n } from "@/i18n/client";
 import { hasPermission, type Actor } from "@/domain/rbac/permissions";
 
 export function OrgNav({
@@ -11,6 +15,8 @@ export function OrgNav({
   actor: Actor;
   labels: Dictionary["dashboard"];
 }) {
+  const pathname = usePathname();
+  const { t } = useI18n();
   const base = `/dashboard/organizations/${organizationId}`;
   const links: Array<{ href: string; label: string; show: boolean }> = [
     { href: base, label: labels.insights, show: true },
@@ -30,14 +36,26 @@ export function OrgNav({
   ];
 
   return (
-    <nav className="flex flex-wrap gap-3 text-sm underline">
+    <nav className="flex flex-wrap gap-1 text-sm" aria-label={t.common.orgNav}>
       {links
         .filter((item) => item.show)
-        .map((item) => (
-          <Link key={item.href} href={item.href}>
-            {item.label}
-          </Link>
-        ))}
+        .map((item) => {
+          const current = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={current ? "page" : undefined}
+              className={
+                current
+                  ? "inline-flex min-h-11 items-center rounded-full bg-[#111111] px-3 text-[13px] font-semibold text-white"
+                  : "inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 transition-colors hover:bg-[#FAFAFA] hover:text-[#111111]"
+              }
+            >
+              {item.label}
+            </Link>
+          );
+        })}
     </nav>
   );
 }

@@ -49,7 +49,7 @@ export function CalendarInsights({
                 <Link className="underline" href={`/c/${calendar.slug}`}>
                   {calendar.name}
                 </Link>
-                <span className="text-zinc-500"> · {calendar.reason}</span>
+                <span className="text-zinc-600"> · {calendar.reason}</span>
               </li>
             ))}
           </ul>

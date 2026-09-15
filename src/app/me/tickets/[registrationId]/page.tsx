@@ -27,10 +27,10 @@ export default async function TicketQrPage({
   const qrImage = ticket.qrToken ? await QRCode.toDataURL(ticket.qrToken, { margin: 1, width: 240 }) : null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
-        <Link href="/me/tickets" className="text-sm underline">
+      <main id="content" className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-6 py-10">
+        <Link href="/me/tickets" className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
           {t.me.tickets}
         </Link>
         <Card>

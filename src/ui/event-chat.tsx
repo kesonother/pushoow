@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -27,6 +28,7 @@ export function EventChat({
   eventId: string;
   labels: Record<string, string>;
 }) {
+  const { t } = useI18n();
   const [rights, setRights] = useState<Rights | null>(null);
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +168,7 @@ export function EventChat({
     await fetch(`/api/v1/events/${eventId}/chat/messages/${id}/moderate`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: hard ? "hard_delete" : "soft_delete", reason: "Removed from chat" }),
+      body: JSON.stringify({ action: hard ? "hard_delete" : "soft_delete", reason: t.event.chatRemovedReason }),
     });
   }
 
@@ -180,7 +182,7 @@ export function EventChat({
           </Button>
         ) : null}
       </div>
-      <ul className="grid max-h-80 gap-2 overflow-y-auto rounded-2xl border border-zinc-200 p-3">
+      <ul className="grid max-h-80 gap-2 overflow-y-auto rounded-xl border border-[#E8E8E8] p-3">
         {visible.map((item) => (
           <li key={item.id} className={`text-sm ${item.pending ? "opacity-60" : ""}`}>
             <p className="font-medium text-zinc-700">

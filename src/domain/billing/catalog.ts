@@ -71,6 +71,7 @@ const FREE_ENTITLEMENTS = entitlements({
   supportSlaHours: 72,
   advancedAnalytics: false,
   ticketingPlatformFeeBps: DEFAULT_PLATFORM_FEE_BPS,
+  aiEnabled: true,
 });
 
 const PLUS_ENTITLEMENTS = entitlements({
@@ -87,6 +88,7 @@ const PLUS_ENTITLEMENTS = entitlements({
   supportSlaHours: 12,
   advancedAnalytics: true,
   ticketingPlatformFeeBps: 0,
+  aiEnabled: true,
 });
 
 const ENTERPRISE_ENTITLEMENTS = entitlements({
@@ -103,6 +105,7 @@ const ENTERPRISE_ENTITLEMENTS = entitlements({
   supportSlaHours: 4,
   advancedAnalytics: true,
   ticketingPlatformFeeBps: 0,
+  aiEnabled: true,
 });
 
 function legacyAlias(id: Extract<PlanId, "starter" | "pro" | "business">, name: string): Plan {

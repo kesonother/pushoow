@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 export function StripeConnectCard({
@@ -24,6 +25,7 @@ export function StripeConnectCard({
     charges: string;
   };
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function start() {
@@ -35,7 +37,7 @@ export function StripeConnectCard({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to start Stripe onboarding");
+      setError(apiMessage(payload, t.errors.unableToStartStripe));
       return;
     }
     if (payload.data?.onboardingUrl) {

@@ -109,12 +109,12 @@ export function NotificationPreferences({
     <section className="grid gap-4">
       <h2 className="text-lg font-medium">{labels.title}</h2>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <table className="w-full min-w-[36rem] text-start text-sm">
           <thead>
             <tr>
-              <th className="pb-2 pr-3"> </th>
+              <th className="pb-2 pe-3"> </th>
               {CHANNELS.map((channel) => (
-                <th key={channel} className="pb-2 pr-3 font-medium">
+                <th key={channel} className="pb-2 pe-3 font-medium">
                   {channel}
                 </th>
               ))}
@@ -123,9 +123,9 @@ export function NotificationPreferences({
           <tbody>
             {CATEGORIES.map((category) => (
               <tr key={category}>
-                <th className="py-2 pr-3 font-medium">{category}</th>
+                <th className="py-2 pe-3 font-medium">{category}</th>
                 {CHANNELS.map((channel) => (
-                  <td key={`${channel}-${category}`} className="py-2 pr-3">
+                  <td key={`${channel}-${category}`} className="py-2 pe-3">
                     <input
                       type="checkbox"
                       checked={enabled(channel, category)}

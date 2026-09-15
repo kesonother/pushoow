@@ -122,6 +122,8 @@ describe("pricing catalog", () => {
     expect(entitlementsFor("free").apiEnabled).toBe(false);
     expect(entitlementsFor("free").ticketingPlatformFeeBps).toBe(250);
     expect(entitlementsFor("enterprise").ssoEnabled).toBe(true);
+    expect(entitlementsFor("free").aiEnabled).toBe(true);
+    expect(entitlementsFor("plus").aiEnabled).toBe(true);
   });
 });
 

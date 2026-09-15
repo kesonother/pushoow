@@ -4,6 +4,7 @@ import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { backoffMs, type JobRecord, type JobRepository, type JobType } from "@/jobs/types";
+import { increment, getQueueDepth, setQueueDepth } from "@/observability/metrics";
 
 export type JobQueueDeps = {
   jobs: JobRepository;
@@ -31,7 +32,7 @@ export function createJobQueue(deps: JobQueueDeps) {
 
     const now = clock.now();
     try {
-      return await deps.jobs.create({
+      const created = await deps.jobs.create({
         id: ids.id(),
         type: input.type,
         payload: input.payload,
@@ -46,6 +47,8 @@ export function createJobQueue(deps: JobQueueDeps) {
         createdAt: now,
         updatedAt: now,
       });
+      setQueueDepth(getQueueDepth() + 1);
+      return created;
     } catch (error) {
       if (input.idempotencyKey) {
         const existing = await deps.jobs.findByIdempotencyKey(input.idempotencyKey);
@@ -63,9 +66,11 @@ export function createJobQueue(deps: JobQueueDeps) {
     const now = clock.now();
     const job = await deps.jobs.claimNext(now);
     if (!job) return null;
+    setQueueDepth(getQueueDepth() - 1);
 
     const handler = handlers[job.type];
     if (!handler) {
+      increment("queue.failed");
       await deps.jobs.save({
         ...job,
         status: "dead",
@@ -78,6 +83,7 @@ export function createJobQueue(deps: JobQueueDeps) {
 
     try {
       await handler(job);
+      increment("queue.processed");
       return deps.jobs.save({
         ...job,
         status: "completed",
@@ -89,6 +95,8 @@ export function createJobQueue(deps: JobQueueDeps) {
       const attempts = job.attempts;
       const failed = attempts >= job.maxAttempts;
       const message = error instanceof Error ? error.message : "Unknown job error";
+      increment("queue.failed");
+      if (!failed) setQueueDepth(getQueueDepth() + 1);
       return deps.jobs.save({
         ...job,
         status: failed ? "dead" : "pending",

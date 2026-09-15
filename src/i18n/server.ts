@@ -4,6 +4,7 @@ import {
   directionFor,
   isLocale,
   LOCALE_COOKIE,
+  negotiateLocale,
   type Locale,
 } from "@/i18n/config";
 import { getDictionary, type Dictionary } from "@/i18n/dictionaries";
@@ -12,11 +13,7 @@ export async function getLocale(): Promise<Locale> {
   const cookieStore = await cookies();
   const fromCookie = cookieStore.get(LOCALE_COOKIE)?.value;
   if (isLocale(fromCookie)) return fromCookie;
-
-  const header = (await headers()).get("accept-language") ?? "";
-  const preferred = header.split(",")[0]?.split("-")[0];
-  if (isLocale(preferred)) return preferred;
-  return DEFAULT_LOCALE;
+  return negotiateLocale((await headers()).get("accept-language"), DEFAULT_LOCALE);
 }
 
 export async function getI18n(): Promise<{

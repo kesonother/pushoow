@@ -12,6 +12,7 @@ import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { CalendarInsights } from "@/ui/calendar-insights";
 import { Card } from "@/ui/card";
+import { EmptyState } from "@/ui/empty-state";
 import { NewsletterEditor } from "@/ui/newsletter-editor";
 import { EditCalendarForm } from "@/ui/edit-calendar-form";
 import { SiteHeader } from "@/ui/site-header";
@@ -56,23 +57,23 @@ export default async function EditCalendarPage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10">
-        <Link href={`/dashboard/organizations/${organizationId}/calendars`} className="text-sm underline">
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
+        <Link href={`/dashboard/organizations/${organizationId}/calendars`} className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
           {t.dashboard.calendars}
         </Link>
-          <h1 className="text-3xl font-semibold tracking-tight">{calendar.name}</h1>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{calendar.name}</h1>
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/new`}
-              className="text-sm underline"
+              className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70"
             >
               {t.event.newEvent}
             </Link>
             <Link
               href={`/dashboard/organizations/${organizationId}/import?calendarId=${calendarId}&kind=subscribers`}
-              className="text-sm underline"
+              className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70"
             >
               {t.dashboard.importCsv}
             </Link>
@@ -111,6 +112,13 @@ export default async function EditCalendarPage({ params }: PageProps) {
         </Card>
         <Card>
           <h2 className="text-lg font-medium">{t.event.wizardTitle}</h2>
+          {events.length === 0 ? (
+            <EmptyState
+              title={t.emptyState.events}
+              actionHref={`/dashboard/organizations/${organizationId}/calendars/${calendarId}/events/new?starter=first_meetup`}
+              actionLabel={t.emptyState.createEvent}
+            />
+          ) : null}
           <ul className="mt-3 grid gap-2 text-sm">
             {events.map((event) => (
               <li key={event.id} className="flex flex-wrap items-center justify-between gap-2">

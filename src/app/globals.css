@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
+  --background: #ffffff;
   --foreground: #111111;
+  --focus: #111111;
+  --border: #e8e8e8;
+  --surface: #fafafa;
 }
 
 @theme inline {
@@ -10,6 +13,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: 4.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -27,9 +36,72 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+#content > h1,
+#content > header h1 {
+  color: #111111;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+html[lang="ar"] body {
+  font-family: "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+
+html[lang="ja"] body {
+  font-family: var(--font-geist-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+html[lang="zh"] body {
+  font-family: var(--font-geist-sans), "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+html[lang="ko"] body {
+  font-family: var(--font-geist-sans), "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+
+html[lang="hi"] body {
+  font-family: var(--font-geist-sans), "Noto Sans Devanagari", "Kohinoor Devanagari", sans-serif;
+}
+
+.home-gradient-text {
+  background-image: linear-gradient(90deg, #7c3aed 0%, #c026d3 32%, #db2777 58%, #ea580c 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.home-h-scroll {
+  scrollbar-width: thin;
+}
+
+.home-h-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
 }
 
 :focus-visible {
-  outline: 2px solid #111111;
-  outline-offset: 2px;
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  accent-color: #111111;
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText;
+  }
 }

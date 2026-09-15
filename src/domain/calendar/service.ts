@@ -22,6 +22,7 @@ import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 
 export type CalendarWriteInput = {
+  templateId?: string | null;
   name?: string;
   slug?: string;
   description?: string | null;
@@ -60,6 +61,7 @@ export type CalendarServiceDeps = {
   } | null>;
   clock?: Clock;
   ids?: IdGenerator;
+  onCreated?: (input: { actor: Actor; calendar: Calendar }) => Promise<void>;
 };
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -109,7 +111,7 @@ export function createCalendarService(deps: CalendarServiceDeps) {
     const inherited = deps.organizationBranding
       ? await deps.organizationBranding(actor.organizationId)
       : null;
-    return deps.calendars.create({
+    const created = await deps.calendars.create({
       id: ids.id(),
       organizationId: actor.organizationId,
       slug,
@@ -138,6 +140,8 @@ export function createCalendarService(deps: CalendarServiceDeps) {
       updatedAt: now,
       deletedAt: null,
     });
+    await deps.onCreated?.({ actor, calendar: created });
+    return created;
   }
 
   async function listCalendars(actor: Actor): Promise<Calendar[]> {

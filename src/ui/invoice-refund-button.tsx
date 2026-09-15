@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 export function InvoiceRefundButton({
@@ -14,6 +15,7 @@ export function InvoiceRefundButton({
   label: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,11 +30,11 @@ export function InvoiceRefundButton({
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error?.message ?? "Refund failed");
+        throw new Error(apiMessage(payload, t.errors.refundFailed));
       }
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Refund failed");
+      setError(err instanceof Error ? err.message : t.errors.refundFailed);
     } finally {
       setPending(false);
     }

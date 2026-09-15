@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { IntegrationCategory, IntegrationConnectionView } from "@/domain/integration/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 const CATEGORIES: IntegrationCategory[] = ["crm", "marketing", "productivity", "video", "calendar"];
@@ -34,6 +35,7 @@ export function IntegrationsPanel({
   initialItems: IntegrationConnectionView[];
   labels: Labels;
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState(initialItems);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function IntegrationsPanel({
   async function load() {
     const response = await fetch(`/api/v1/organizations/${organizationId}/integrations`);
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message ?? "Unable to load integrations");
+    if (!response.ok) throw new Error(apiMessage(payload, t.errors.unableToLoadIntegrations));
     setItems(payload.data);
   }
 
@@ -70,7 +72,7 @@ export function IntegrationsPanel({
         body: action === "connect" ? JSON.stringify({ credentials: parseCredentials(keys[provider] ?? "") }) : "{}",
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "Request failed");
+      if (!response.ok) throw new Error(apiMessage(payload, t.errors.requestFailed));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
@@ -94,7 +96,7 @@ export function IntegrationsPanel({
             {items
               .filter((item) => item.category === category)
               .map((item) => (
-                <li key={item.provider} className="rounded-xl border border-zinc-200 p-4">
+                <li key={item.provider} className="rounded-xl border border-[#E8E8E8] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{item.label}</p>

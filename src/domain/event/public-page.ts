@@ -19,7 +19,7 @@ import { systemClock } from "@/lib/clock";
 export type EventPublicView = {
   event: Event;
   lifecycle: ReturnType<typeof resolveLifecycle>;
-  calendar: Pick<Calendar, "id" | "name" | "slug" | "timezone">;
+  calendar: Pick<Calendar, "id" | "name" | "slug" | "timezone" | "visibility" | "deletedAt">;
   organizer: Pick<OrganizerProfile, "displayName" | "bio" | "website" | "linkedin" | "avatarUrl"> | null;
   descriptionHtml: string;
   mapUrl: string | null;
@@ -69,6 +69,8 @@ export function createPublicEventService(deps: {
         name: calendar.name,
         slug: calendar.slug,
         timezone: calendar.timezone,
+        visibility: calendar.visibility,
+        deletedAt: calendar.deletedAt,
       },
       organizer: organizer
         ? {

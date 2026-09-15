@@ -35,13 +35,13 @@ export default async function OrganizationIntegrationsPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
-        <Link href={`/dashboard/organizations/${organizationId}`} className="text-sm underline">
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
+        <Link href={`/dashboard/organizations/${organizationId}`} className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
           {t.dashboard.insights}
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">{t.integrations.title}</h1>
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.integrations.title}</h1>
         <Card>
           <IntegrationsPanel organizationId={organizationId} initialItems={items} labels={t.integrations} />
         </Card>

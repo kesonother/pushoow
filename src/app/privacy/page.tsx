@@ -10,10 +10,10 @@ export default async function PrivacyPage() {
   const { t } = await getI18n();
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.privacy.title}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.privacy.title}</h1>
         <PrivacySettings
           labels={{
             title: t.privacy.title,
@@ -24,6 +24,11 @@ export default async function PrivacyPage() {
             portability: t.privacy.portability,
             delete: t.privacy.delete,
             unavailable: t.notifications.unavailable,
+            aiTitle: t.privacy.aiTitle,
+            aiDisclosure: t.privacy.aiDisclosure,
+            aiOptOut: t.privacy.aiOptOut,
+            aiTrainingConsent: t.privacy.aiTrainingConsent,
+            aiAcknowledge: t.privacy.aiAcknowledge,
           }}
         />
       </main>

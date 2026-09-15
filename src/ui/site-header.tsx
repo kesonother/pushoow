@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { SparkleIcon } from "@/ui/home/icons";
+import { LocaleSwitcher } from "@/ui/locale-switcher";
 import { LogoutButton } from "@/ui/logout-button";
+import { mutedPillClass, navLinkClass, primaryPillClass } from "@/ui/theme";
 
 export function SiteHeader({
   t,
@@ -10,46 +13,48 @@ export function SiteHeader({
   signedIn: boolean;
 }) {
   return (
-    <header className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-zinc-950">
+    <header className="border-b border-[#E8E8E8] bg-white">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-6 py-3">
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-medium tracking-tight text-zinc-500"
+        >
+          <SparkleIcon className="h-3.5 w-3.5 text-zinc-400" />
           {t.brand}
         </Link>
-        <nav aria-label="Principal" className="flex items-center gap-3 text-sm">
-          <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/discover">
+        <nav aria-label={t.common.navMain} className="flex min-w-0 flex-wrap items-center justify-end gap-1 text-[13px]">
+          <LocaleSwitcher />
+          <Link className={navLinkClass} href="/discover">
             {t.nav.discover}
           </Link>
-          <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/calendars">
+          <Link className={navLinkClass} href="/calendars">
             {t.nav.calendars}
           </Link>
-          <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/status">
+          <Link className={navLinkClass} href="/status">
             {t.nav.status}
           </Link>
           {signedIn ? (
             <>
-              <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/me">
+              <Link className={navLinkClass} href="/me">
                 {t.nav.me}
               </Link>
-              <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/dashboard">
+              <Link className={navLinkClass} href="/dashboard">
                 {t.nav.dashboard}
               </Link>
-              <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/check-in">
+              <Link className={navLinkClass} href="/check-in">
                 {t.nav.checkin}
               </Link>
-              <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/profile">
+              <Link className={navLinkClass} href="/profile">
                 {t.nav.profile}
               </Link>
               <LogoutButton label={t.nav.logout} />
             </>
           ) : (
             <>
-              <Link className="rounded-md px-2 py-1 hover:bg-zinc-100" href="/login">
+              <Link href="/login" className={mutedPillClass}>
                 {t.nav.login}
               </Link>
-              <Link
-                className="rounded-lg bg-zinc-950 px-3 py-2 font-medium text-white hover:bg-zinc-800"
-                href="/register"
-              >
+              <Link href="/register" className={primaryPillClass}>
                 {t.nav.register}
               </Link>
             </>

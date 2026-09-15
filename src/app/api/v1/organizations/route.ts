@@ -1,7 +1,9 @@
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { paginateById, parsePageQuery } from "@/api/pagination";
 import { jsonOk, readJson, withApi } from "@/api/handler";
 import { writeAuditLog } from "@/db/audit";
+import { REFERRAL_COOKIE } from "@/domain/referral/types";
 import { getServices } from "@/server/container";
 
 const createOrganizationSchema = z.object({
@@ -39,6 +41,19 @@ export const POST = withApi(
       resourceId: organization.id,
       requestId,
     });
+
+    try {
+      const code = (await cookies()).get(REFERRAL_COOKIE)?.value;
+      if (code) {
+        await services.referrals.attributeOrganizer({
+          code,
+          userId: user!.id,
+          organizationId: organization.id,
+        });
+      }
+    } catch {
+      /* referral must not block organization creation */
+    }
 
     return jsonOk(organization, { status: 201, requestId });
   },

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CheckInManifest, CheckInResult, GuestManifestEntry } from "@/domain/checkin/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -25,6 +26,7 @@ type Labels = {
   wrongEvent: string;
   invalid: string;
   revoked: string;
+  online?: string;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -134,6 +136,7 @@ export function CheckInScanner({
   isPaid: boolean;
   labels: Labels;
 }) {
+  const { t } = useI18n();
   const online = useOnline();
   const cached = useCachedCheckIn(eventId);
   const manifest = cached.manifest;
@@ -304,7 +307,7 @@ export function CheckInScanner({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Check-in failed");
+      setError(apiMessage(payload, t.errors.checkInFailed));
       return;
     }
     setResult(payload.data as CheckInResult);
@@ -314,7 +317,7 @@ export function CheckInScanner({
   async function onScanFile(file: File) {
     const Detector = (window as Window & { BarcodeDetector?: new (opts: { formats: string[] }) => { detect: (source: ImageBitmap) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
     if (!Detector) {
-      setError("QR camera scan is not available on this browser. Search by name, email, or ticket id.");
+      setError(t.errors.cameraUnavailable);
       return;
     }
     const detector = new Detector({ formats: ["qr_code"] });
@@ -322,7 +325,7 @@ export function CheckInScanner({
     const codes = await detector.detect(bitmap);
     const token = codes[0]?.rawValue;
     if (!token) {
-      setError("No QR code found");
+      setError(t.errors.noQr);
       return;
     }
     await submit({ token, source: "scan" });
@@ -336,7 +339,7 @@ export function CheckInScanner({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Bulk check-in failed");
+      setError(apiMessage(payload, t.errors.bulkCheckInFailed));
       return;
     }
     setSelected([]);
@@ -354,7 +357,7 @@ export function CheckInScanner({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Walk-in failed");
+      setError(apiMessage(payload, t.errors.walkInFailed));
       return;
     }
     if (payload.data?.kind === "paid" && payload.data.checkout?.checkoutUrl) {
@@ -378,40 +381,43 @@ export function CheckInScanner({
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm text-zinc-500">{title}</p>
+          <p className="text-sm text-zinc-600">{title}</p>
           <p className="text-3xl font-semibold tabular-nums" aria-live="polite">
             {labels.counter}: {checkedIn}
             {capacity != null ? ` / ${capacity}` : ""}
           </p>
         </div>
         <p className={`rounded-full px-3 py-1 text-sm ${online ? "bg-emerald-100" : "bg-amber-100"}`}>
-          {online ? "Online" : labels.offline}
+          {online ? labels.online ?? t.checkin.online : labels.offline}
           {pending > 0 ? ` · ${pending}` : ""}
         </p>
       </div>
       {result ? (
         <p
           role="status"
-          className={`rounded-2xl border-4 px-4 py-6 text-center text-2xl font-semibold ${STATUS_STYLES[result.status] ?? STATUS_STYLES.invalid}`}
+          className={`rounded-xl border-4 px-4 py-6 text-center text-2xl font-semibold ${STATUS_STYLES[result.status] ?? STATUS_STYLES.invalid}`}
         >
           {statusLabel[result.status] ?? result.status}
           {result.displayName ? ` · ${result.displayName}` : ""}
         </p>
       ) : null}
       <div className="grid gap-2">
-        <p className="text-sm font-medium">{labels.scan}</p>
+        <p className="text-sm font-medium" id="checkin-scan-label">
+          {labels.scan}
+        </p>
         {cameraOn ? (
           <CameraScan onToken={(token) => void submit({ token, source: "scan" })} onClose={() => setCameraOn(false)} />
         ) : (
-          <Button type="button" variant="secondary" onClick={() => setCameraOn(true)}>
+          <Button type="button" variant="secondary" aria-describedby="checkin-scan-label" onClick={() => setCameraOn(true)}>
             {labels.scan}
           </Button>
         )}
-        <input
+        <Input
+          name="qrImage"
           type="file"
           accept="image/*"
           capture="environment"
-          className="min-h-11 text-sm"
+          label={t.common.scanImage}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void onScanFile(file);
@@ -459,10 +465,10 @@ export function CheckInScanner({
           onChange={(event) => setWalkInEmail(event.target.value)}
         />
         {isPaid && (manifest?.ticketTypes.length ?? 0) > 0 ? (
-          <label className="grid gap-1 text-sm font-medium">
+          <label className="grid gap-1 text-sm font-medium text-zinc-900">
             {labels.walkInTicket}
             <select
-              className="min-h-11 rounded-lg border border-zinc-300 px-3"
+              className="min-h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950"
               value={walkInTicket || manifest?.ticketTypes?.[0]?.id || ""}
               onChange={(event) => setWalkInTicket(event.target.value)}
             >
@@ -492,15 +498,22 @@ export function CheckInScanner({
             }
             onCheck={() => void submit({ registrationId: guest.registrationId, source: "search" })}
             checkLabel={labels.checkIn}
+            checkedLabel={labels.checkedIn}
+            revokedLabel={labels.revoked}
           />
         ))}
       </ul>
-      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function CameraScan({ onToken, onClose }: { onToken: (token: string) => void; onClose: () => void }) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastToken = useRef("");
   const onTokenRef = useRef(onToken);
@@ -545,9 +558,15 @@ function CameraScan({ onToken, onClose }: { onToken: (token: string) => void; on
 
   return (
     <div className="grid gap-2">
-      <video ref={videoRef} className="aspect-[3/4] w-full rounded-xl bg-black object-cover" playsInline muted />
+      <video
+        ref={videoRef}
+        className="aspect-[3/4] w-full rounded-xl bg-black object-cover"
+        playsInline
+        muted
+        aria-label={t.checkin.scan}
+      />
       <Button type="button" variant="ghost" onClick={onClose}>
-        ×
+        {t.checkin.closeCamera}
       </Button>
     </div>
   );
@@ -559,25 +578,31 @@ function GuestRow({
   onSelect,
   onCheck,
   checkLabel,
+  checkedLabel,
+  revokedLabel,
 }: {
   guest: GuestManifestEntry;
   selected: boolean;
   onSelect: (checked: boolean) => void;
   onCheck: () => void;
   checkLabel: string;
+  checkedLabel: string;
+  revokedLabel: string;
 }) {
   const disabled = guest.status === "checked_in" || guest.status === "revoked";
+  const actionLabel =
+    guest.status === "checked_in" ? checkedLabel : guest.status === "revoked" ? revokedLabel : checkLabel;
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 px-3 py-2">
+    <li className="flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] px-3 py-2">
       <label className="flex min-w-0 items-center gap-2 text-sm">
         <input type="checkbox" checked={selected} disabled={disabled} onChange={(event) => onSelect(event.target.checked)} />
-        <span className="truncate">
-          <strong>{guest.displayName}</strong>
-          <span className="block text-zinc-500">{guest.email}</span>
+        <span className="min-w-0">
+          <strong className="block truncate">{guest.displayName}</strong>
+          <span className="block truncate text-zinc-600">{guest.email}</span>
         </span>
       </label>
       <Button type="button" variant="secondary" onClick={onCheck} disabled={disabled}>
-        {guest.status === "checked_in" ? "✓" : guest.status === "revoked" ? "×" : checkLabel}
+        {actionLabel}
       </Button>
     </li>
   );

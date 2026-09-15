@@ -36,15 +36,15 @@ export default async function OrganizationAuditPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.audit}</h1>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.audit}</h1>
           {hasPermission(actor, "exports:create") ? (
             <Link
               href={`/api/v1/organizations/${organizationId}/audit/export.csv`}
-              className="text-sm underline"
+              className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70"
             >
               {t.dashboard.exportCsv}
             </Link>
@@ -63,7 +63,7 @@ export default async function OrganizationAuditPage({
                   {log.resourceType}
                   {log.resourceId ? `:${log.resourceId}` : ""}
                 </p>
-                {log.userAgent ? <p className="truncate text-xs text-zinc-500">{log.userAgent}</p> : null}
+                {log.userAgent ? <p className="truncate text-xs text-zinc-600">{log.userAgent}</p> : null}
               </Card>
             </li>
           ))}

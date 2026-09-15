@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { fieldsForKind, requiredFields } from "@/domain/import/detect";
 import type { ImportError, ImportField, ImportKind, ImportMapping, ImportPublicView, ImportReport } from "@/domain/import/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 const STEPS = [
@@ -69,6 +70,7 @@ export function ImportWizard({
   initialEventId?: string;
   labels: Labels;
 }) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [kind, setKind] = useState<ImportKind>(initialKind ?? "guests");
   const [calendarId, setCalendarId] = useState(initialCalendarId ?? calendars[0]?.id ?? "");
@@ -91,7 +93,7 @@ export function ImportWizard({
 
   async function readApi<T>(response: Response): Promise<T> {
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message ?? "Request failed");
+    if (!response.ok) throw new Error(apiMessage(payload, t.errors.requestFailed));
     return payload.data as T;
   }
 
@@ -295,9 +297,9 @@ export function ImportWizard({
             <p className="text-sm text-zinc-600">{labels.empty}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-start text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-200">
+                  <tr className="border-b border-[#E8E8E8]">
                     <th className="py-2">#</th>
                     {(job?.headers ?? []).map((header) => (
                       <th key={header}>{header}</th>
@@ -350,7 +352,7 @@ export function ImportWizard({
           </p>
           {job ? (
             <a
-              className="text-sm underline"
+              className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70"
               href={`/api/v1/organizations/${organizationId}/imports/${job.id}/errors.csv`}
             >
               {labels.downloadErrors}

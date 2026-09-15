@@ -1,13 +1,20 @@
-import type { InputHTMLAttributes } from "react";
+"use client";
+
+import { useId, type InputHTMLAttributes } from "react";
+import { controlClassName } from "@/ui/control";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: string;
+  error?: string;
 };
 
-export function Input({ label, hint, id, className = "", ...props }: InputProps) {
-  const inputId = id ?? props.name;
-  const hintId = hint && inputId ? `${inputId}-hint` : undefined;
+export function Input({ label, hint, error, id, className = "", ...props }: InputProps) {
+  const generatedId = useId();
+  const inputId = id ?? (typeof props.name === "string" ? props.name : generatedId);
+  const hintId = hint ? `${inputId}-hint` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -16,13 +23,19 @@ export function Input({ label, hint, id, className = "", ...props }: InputProps)
       </label>
       <input
         id={inputId}
-        aria-describedby={hintId}
-        className={`min-h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 outline-none focus-visible:border-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-950/20 ${className}`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={`${controlClassName} ${className}`}
         {...props}
       />
       {hint ? (
         <p id={hintId} className="text-sm text-zinc-600">
           {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={errorId} role="alert" className="text-sm text-red-800">
+          {error}
         </p>
       ) : null}
     </div>

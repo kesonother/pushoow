@@ -20,12 +20,12 @@ export default async function ProfilePage() {
   const profiles = await services.profiles.getProfiles(session.user.id, session.user.id);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.profile.title}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.profile.title}</h1>
         <p>
-          <Link className="underline" href="/privacy">
+          <Link className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70" href="/privacy">
             {t.privacy.title}
           </Link>
         </p>
@@ -88,6 +88,11 @@ export default async function ProfilePage() {
               portability: t.privacy.portability,
               delete: t.privacy.delete,
               unavailable: t.notifications.unavailable,
+              aiTitle: t.privacy.aiTitle,
+              aiDisclosure: t.privacy.aiDisclosure,
+              aiOptOut: t.privacy.aiOptOut,
+              aiTrainingConsent: t.privacy.aiTrainingConsent,
+              aiAcknowledge: t.privacy.aiAcknowledge,
             }}
           />
         </Card>

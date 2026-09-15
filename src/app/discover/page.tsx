@@ -1,25 +1,35 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSession } from "@/auth/session";
 import { getI18n } from "@/i18n/server";
 import { DiscoverExplorer } from "@/ui/discover-explorer";
-import { SiteHeader } from "@/ui/site-header";
+import { PageShell } from "@/ui/page-shell";
+import { pageLeadClass, pageTitleClass } from "@/ui/theme";
+
+export const metadata: Metadata = {
+  title: "Discover events",
+  description: "Find public community events without knowing the organizer.",
+  alternates: { canonical: "/discover" },
+  openGraph: {
+    title: "Discover events",
+    description: "Find public community events without knowing the organizer.",
+  },
+  twitter: { card: "summary", title: "Discover events" },
+};
 
 export default async function DiscoverPage() {
   const { t } = await getI18n();
   const session = await getSession();
 
   return (
-    <div className="flex min-h-full flex-col">
-      <SiteHeader t={t} signedIn={Boolean(session?.user)} />
-      <main id="content" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-10">
-        <header className="grid gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t.discover.title}</h1>
-          <p className="max-w-2xl text-zinc-600">{t.discover.body}</p>
-        </header>
-        <Suspense fallback={<p>…</p>}>
-          <DiscoverExplorer labels={t.discover} />
-        </Suspense>
-      </main>
-    </div>
+    <PageShell t={t} signedIn={Boolean(session?.user)} width="xl">
+      <header className="grid gap-2">
+        <h1 className={pageTitleClass}>{t.discover.title}</h1>
+        <p className={pageLeadClass}>{t.discover.body}</p>
+      </header>
+      <Suspense fallback={<p>{t.common.loading}</p>}>
+        <DiscoverExplorer labels={t.discover} />
+      </Suspense>
+    </PageShell>
   );
 }

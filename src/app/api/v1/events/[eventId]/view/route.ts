@@ -7,7 +7,7 @@ type RouteContext = { params: Promise<{ eventId: string }> };
 
 export const POST = (request: Request, context: RouteContext) =>
   withApi(
-    async ({ requestId }) => {
+    async ({ requestId, user }) => {
       const { eventId } = await context.params;
       const jar = await cookies();
       const existing = jar.get("pushoow.vid")?.value;
@@ -15,7 +15,11 @@ export const POST = (request: Request, context: RouteContext) =>
       if (!existing) {
         jar.set("pushoow.vid", visitorId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
       }
-      return jsonOk(await getServices().analytics.recordView(eventId, visitorId), { requestId });
+      const services = getServices();
+      if (user) {
+        await services.onboarding.track({ userId: user.id, name: "first_event" });
+      }
+      return jsonOk(await services.analytics.recordView(eventId, visitorId), { requestId });
     },
-    { auth: "none", rateLimit: { limit: 40, windowMs: 60_000 } },
+    { auth: "optional", rateLimit: { limit: 40, windowMs: 60_000 } },
   )(request);

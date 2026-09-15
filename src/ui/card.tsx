@@ -8,8 +8,10 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm ${className}`}>
+    <div
+      className={`rounded-xl border border-[#E8E8E8] bg-white p-5 transition-colors hover:border-zinc-300 ${className}`}
+    >
       {children}
-    </section>
+    </div>
   );
 }

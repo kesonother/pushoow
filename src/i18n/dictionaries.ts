@@ -1,4 +1,7 @@
 import type { Locale } from "@/i18n/config";
+import { mergeCatalog } from "@/i18n/fallback";
+import { extrasEn, extrasFr } from "@/i18n/messages/extras";
+import { overlays } from "@/i18n/messages/overlays";
 
 // Notification copy is required by /unsubscribe and the profile preference matrix.
 
@@ -76,6 +79,12 @@ export const dictionaries = {
       anonymousRsvp: "RSVP anonyme",
       appearOnRoster: "Figurer sur le roster",
       rosterMode: "Visibilité du roster",
+      aiTitle: "Intelligence artificielle",
+      aiDisclosure:
+        "Les contenus générés sont marqués comme assistance IA. Les données utilisateur ne sont pas utilisées pour entraîner un modèle sans consentement explicite.",
+      aiOptOut: "Désactiver l’IA pour mon compte",
+      aiTrainingConsent: "Autoriser l’entraînement (consentement explicite, désactivé par défaut)",
+      aiAcknowledge: "J’ai lu l’information IA",
     },
     invitation: {
       title: "Invitation",
@@ -121,6 +130,9 @@ export const dictionaries = {
       refunds: "Remboursements",
       adjustments: "Ajustements",
       importCsv: "Importer (Luma / CSV)",
+      recap: "Récap IA",
+      recapHint: "Métriques agrégées. Suggestions uniquement. Aucune donnée sensible.",
+      recapRun: "Générer le récap",
       integrations: "Intégrations",
       developers: "API publique",
       members: "Membres",
@@ -423,6 +435,10 @@ export const dictionaries = {
       category: "Catégorie",
       language: "Langue",
       tags: "Tags",
+      generateDescription: "Générer une description (IA)",
+      persona: "Ton",
+      aiGenerated: "Généré avec assistance IA — à relire et modifier.",
+      coverStyle: "Style de couverture",
     },
     discover: {
       title: "Découvrir",
@@ -479,6 +495,10 @@ export const dictionaries = {
       later: "Plus tard",
       useLocation: "Autour de moi",
       reset: "Réinitialiser",
+      intent: "Recherche en langage naturel",
+      intentPlaceholder: "Un dîner IA discret à NYC la semaine prochaine",
+      intentApply: "Comprendre et filtrer",
+      aiSuggestion: "Suggestion IA, pas un fait certain.",
     },
     notifications: {
       title: "Notifications",
@@ -585,6 +605,12 @@ export const dictionaries = {
       anonymousRsvp: "Anonymous RSVP",
       appearOnRoster: "Appear on the roster",
       rosterMode: "Roster visibility",
+      aiTitle: "Artificial intelligence",
+      aiDisclosure:
+        "Generated content is marked as AI-assisted. User data is not used to train a model without explicit consent.",
+      aiOptOut: "Turn off AI for my account",
+      aiTrainingConsent: "Allow training (explicit consent, off by default)",
+      aiAcknowledge: "I have read the AI disclosure",
     },
     invitation: {
       title: "Invitation",
@@ -630,6 +656,9 @@ export const dictionaries = {
       refunds: "Refunds",
       adjustments: "Adjustments",
       importCsv: "Import (Luma / CSV)",
+      recap: "AI recap",
+      recapHint: "Aggregated metrics. Suggestions only. No sensitive data.",
+      recapRun: "Generate recap",
       integrations: "Integrations",
       developers: "Public API",
       members: "Members",
@@ -931,6 +960,10 @@ export const dictionaries = {
       category: "Category",
       language: "Language",
       tags: "Tags",
+      generateDescription: "Generate a description (AI)",
+      persona: "Voice",
+      aiGenerated: "Generated with AI assistance — review and edit.",
+      coverStyle: "Cover style",
     },
     discover: {
       title: "Discover",
@@ -987,6 +1020,10 @@ export const dictionaries = {
       later: "Later",
       useLocation: "Near me",
       reset: "Reset",
+      intent: "Natural-language search",
+      intentPlaceholder: "Find me a low-key AI dinner in NYC next week",
+      intentApply: "Understand and filter",
+      aiSuggestion: "AI suggestion, not a verified fact.",
     },
     notifications: {
       title: "Notifications",
@@ -1021,8 +1058,16 @@ export const dictionaries = {
   },
 } as const;
 
-export type Dictionary = (typeof dictionaries)[Locale];
+export type MessageCatalog = (typeof dictionaries)["en"];
+export type Dictionary = MessageCatalog & typeof extrasEn;
+
+const englishCatalog = () => mergeCatalog(dictionaries.en as unknown as Dictionary, extrasEn) as Dictionary;
 
 export function getDictionary(locale: Locale): Dictionary {
-  return dictionaries[locale];
+  const english = englishCatalog();
+  if (locale === "en") return english;
+  if (locale === "fr") {
+    return mergeCatalog(english, mergeCatalog(dictionaries.fr as unknown as Record<string, unknown>, extrasFr));
+  }
+  return mergeCatalog(english, overlays[locale] ?? {});
 }

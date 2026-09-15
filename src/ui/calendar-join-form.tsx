@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 export function CalendarJoinForm({
@@ -18,6 +19,7 @@ export function CalendarJoinForm({
   labels: { join: string; login: string; empty: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
@@ -33,7 +35,14 @@ export function CalendarJoinForm({
   }
 
   if (tiers.length === 0) {
-    return <p className="text-sm text-zinc-600">{labels.empty}</p>;
+    return (
+      <p className="text-sm text-zinc-600">
+        {labels.empty}{" "}
+        <a className="underline" href="/discover">
+          {t.emptyState.discoverEvents}
+        </a>
+      </p>
+    );
   }
 
   async function join(tierId: string) {
@@ -47,7 +56,7 @@ export function CalendarJoinForm({
     const payload = await response.json();
     setPending(null);
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to join");
+      setError(apiMessage(payload, t.errors.unableToJoin));
       return;
     }
     router.refresh();

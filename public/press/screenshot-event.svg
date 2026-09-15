@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Event page screenshot">
+  <rect width="1200" height="675" fill="#f4f4f5"/>
+  <rect x="80" y="48" width="1040" height="580" rx="32" fill="#ffffff" stroke="#e4e4e7"/>
+  <rect x="80" y="48" width="1040" height="180" rx="32" fill="#18181b"/>
+  <text x="120" y="280" font-family="Georgia, serif" font-size="42" fill="#111111">First Meetup</text>
+  <text x="120" y="330" font-family="system-ui, sans-serif" font-size="22" fill="#52525b">Tue 22 Sep · 18:30 UTC · Studio</text>
+  <rect x="120" y="380" width="200" height="48" rx="10" fill="#111111"/>
+  <text x="220" y="412" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" fill="#ffffff">RSVP</text>
+</svg>

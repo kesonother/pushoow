@@ -40,6 +40,7 @@ import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { randomToken } from "@/lib/token-crypto";
+import { recordCheckoutFailed, recordCheckoutStarted, recordCheckoutSucceeded } from "@/observability/events";
 
 const DAY_MS = 86_400_000;
 
@@ -333,6 +334,7 @@ export function createBillingService(deps: BillingServiceDeps) {
         updatedAt: now,
       });
     }
+    recordCheckoutSucceeded();
     return next;
   }
 
@@ -392,6 +394,7 @@ export function createBillingService(deps: BillingServiceDeps) {
         checkoutSessionId: checkout.externalId,
         updatedAt: now,
       });
+      recordCheckoutStarted();
       return {
         subscription,
         invoice: { ...invoice, stripeCheckoutSessionId: checkout.externalId },
@@ -468,6 +471,7 @@ export function createBillingService(deps: BillingServiceDeps) {
       body: `We could not collect invoice ${invoice.number}. Access continues during a ${GRACE_PERIOD_DAYS}-day grace period.`,
       idempotencyKey: `billing:failed:${invoice.id}`,
     });
+    recordCheckoutFailed();
     return next;
   }
 

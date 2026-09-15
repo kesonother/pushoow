@@ -94,8 +94,8 @@ export function NewsletterEditor({
       <Input label={labels.subjectB} value={subjectB} onChange={(event) => setSubjectB(event.target.value)} />
       <ul className="grid gap-3">
         {blocks.map((block, index) => (
-          <li key={`${block.type}-${index}`} className="rounded-xl border border-zinc-200 p-3">
-            <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">{block.type}</p>
+          <li key={`${block.type}-${index}`} className="rounded-xl border border-[#E8E8E8] p-3">
+            <p className="mb-2 text-xs uppercase tracking-wide text-zinc-600">{block.type}</p>
             {"text" in block ? (
               <textarea
                 className="min-h-20 w-full rounded-lg border border-zinc-300 px-3 py-2"
@@ -189,7 +189,7 @@ export function NewsletterEditor({
       {html ? (
         <iframe
           title={viewport}
-          className="min-h-64 rounded-2xl border border-zinc-200 bg-white"
+          className="min-h-64 rounded-xl border border-[#E8E8E8] bg-white"
           style={{ width: viewport === "mobile" ? 360 : 640, maxWidth: "100%" }}
           srcDoc={html}
         />

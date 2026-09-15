@@ -40,10 +40,10 @@ export default async function OrganizationAgencyPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.agency}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.agency}</h1>
         <OrgNav organizationId={organizationId} actor={actor} labels={t.dashboard} />
         <AgencyClientForm
           organizationId={organizationId}

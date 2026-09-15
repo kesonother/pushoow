@@ -24,27 +24,28 @@ const SDK = `/* Pushoow embed SDK — no framework required */
   var api = {
     calendar: function (target, opts) {
       opts = opts || {};
-      return mount(target, (opts.baseUrl || base) + "/embed/calendar/" + encodeURIComponent(opts.calendarId), opts.height || "420px");
+      return mount(target, (opts.baseUrl || base) + "/embed/calendar/" + encodeURIComponent(opts.calendarId) + (opts.track ? "?track=1" : ""), opts.height || "420px");
     },
     rsvp: function (target, opts) {
       opts = opts || {};
-      return mount(target, (opts.baseUrl || base) + "/embed/rsvp/" + encodeURIComponent(opts.eventId), opts.height || "180px");
+      return mount(target, (opts.baseUrl || base) + "/embed/rsvp/" + encodeURIComponent(opts.eventId) + (opts.track ? "?track=1" : ""), opts.height || "180px");
     },
     ticket: function (target, opts) {
       opts = opts || {};
-      return mount(target, (opts.baseUrl || base) + "/embed/ticket/" + encodeURIComponent(opts.eventId), opts.height || "280px");
+      return mount(target, (opts.baseUrl || base) + "/embed/ticket/" + encodeURIComponent(opts.eventId) + (opts.track ? "?track=1" : ""), opts.height || "280px");
     },
     auto: function () {
       document.querySelectorAll("[data-pushoow]").forEach(function (el) {
         var kind = el.getAttribute("data-pushoow");
+        var track = el.getAttribute("data-track") === "1";
         if (kind === "calendar" && el.getAttribute("data-calendar-id")) {
-          api.calendar(el, { calendarId: el.getAttribute("data-calendar-id") });
+          api.calendar(el, { calendarId: el.getAttribute("data-calendar-id"), track: track });
         }
         if (kind === "rsvp" && el.getAttribute("data-event-id")) {
-          api.rsvp(el, { eventId: el.getAttribute("data-event-id") });
+          api.rsvp(el, { eventId: el.getAttribute("data-event-id"), track: track });
         }
         if (kind === "ticket" && el.getAttribute("data-event-id")) {
-          api.ticket(el, { eventId: el.getAttribute("data-event-id") });
+          api.ticket(el, { eventId: el.getAttribute("data-event-id"), track: track });
         }
       });
     }

@@ -29,7 +29,7 @@ export function CaptchaFields({
   return (
     <>
       <input type="hidden" name="captchaId" value={challenge.id} />
-      <Input name="captchaAnswer" label={`${label}: ${challenge.prompt}`} required />
+      <Input name="captchaAnswer" label={`${label}: ${challenge.prompt}`} required autoComplete="off" />
     </>
   );
 }

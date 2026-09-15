@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 export function AcceptInvitationForm({
@@ -14,6 +15,7 @@ export function AcceptInvitationForm({
   submit: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function accept() {
@@ -24,7 +26,7 @@ export function AcceptInvitationForm({
     });
     if (!response.ok) {
       const payload = await response.json();
-      setError(payload.error?.message ?? "Unable to accept invitation");
+      setError(apiMessage(payload, t.errors.unableToAcceptInvitation));
       return;
     }
     router.push("/dashboard");

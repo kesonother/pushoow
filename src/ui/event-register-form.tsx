@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatMoney } from "@/domain/payments/currencies";
 import type { PaymentQuote } from "@/domain/payments/quote";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { CaptchaFields, useCaptchaChallenge } from "@/ui/captcha-fields";
 import { Input } from "@/ui/input";
+import { SelectField } from "@/ui/select-field";
 
 export function EventRegisterForm({
   eventId,
@@ -37,6 +39,7 @@ export function EventRegisterForm({
     quoteHint?: string;
   };
 }) {
+  const { t, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
@@ -99,7 +102,7 @@ export function EventRegisterForm({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to register");
+      setError(apiMessage(payload, t.errors.unableToRegister));
       return;
     }
     if (payload.data?.checkoutUrl) {
@@ -111,30 +114,27 @@ export function EventRegisterForm({
 
   return (
     <form action={onSubmit} className="grid gap-3">
-      <Input name="email" type="email" label={labels.email} required />
+      <Input name="email" type="email" label={labels.email} autoComplete="email" required />
       {registrationMode === "password" && labels.password ? (
-        <Input name="password" type="password" label={labels.password} required />
+        <Input name="password" type="password" label={labels.password} autoComplete="off" required />
       ) : null}
       {registrationMode === "token" && labels.token ? (
-        <Input name="token" label={labels.token} required />
+        <Input name="token" label={labels.token} autoComplete="off" required />
       ) : null}
       {tickets && tickets.length > 0 ? (
         <>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            {labels.quantity ?? "Tickets"}
-            <select
-              name="ticketTypeId"
-              className="min-h-11 rounded-lg border border-zinc-300 px-3"
-              value={ticketTypeId}
-              onChange={(event) => setTicketTypeId(event.target.value)}
-            >
-              {tickets.map((ticket) => (
-                <option key={ticket.id} value={ticket.id}>
-                  {ticket.name} · {formatMoney(ticket.priceCents, ticket.currency)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SelectField
+            name="ticketTypeId"
+            label={labels.quantity ?? "Tickets"}
+            value={ticketTypeId}
+            onChange={(event) => setTicketTypeId(event.target.value)}
+          >
+            {tickets.map((ticket) => (
+              <option key={ticket.id} value={ticket.id}>
+                {ticket.name} · {formatMoney(ticket.priceCents, ticket.currency, locale)}
+              </option>
+            ))}
+          </SelectField>
           <Input
             name="quantity"
             type="number"
@@ -147,6 +147,7 @@ export function EventRegisterForm({
             <Input
               name="couponCode"
               label={labels.coupon}
+              autoComplete="off"
               value={couponCode}
               onChange={(event) => setCouponCode(event.target.value)}
             />
@@ -169,23 +170,23 @@ export function EventRegisterForm({
                   );
                 }}
               />
-              {addOn.name} · {formatMoney(addOn.priceCents, addOn.currency)}
+              {addOn.name} · {formatMoney(addOn.priceCents, addOn.currency, locale)}
             </label>
           ))}
         </fieldset>
       ) : null}
       {quote ? (
-        <aside className="grid gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm" aria-live="polite">
+        <aside className="grid gap-1 rounded-xl border border-[#E8E8E8] bg-zinc-50 p-3 text-sm" aria-live="polite">
           <p className="font-medium">{labels.quoteHint ?? "Price breakdown — no hidden fees"}</p>
           {quote.lines.map((line) => (
             <p key={`${line.kind}-${line.label}`} className="flex justify-between gap-4">
               <span>{line.label}</span>
-              <span>{formatMoney(line.amountCents, quote.currency)}</span>
+              <span>{formatMoney(line.amountCents, quote.currency, locale)}</span>
             </p>
           ))}
           <p className="mt-1 flex justify-between gap-4 font-semibold">
             <span>{labels.total ?? "Total"}</span>
-            <span>{formatMoney(quote.totalCents, quote.currency)}</span>
+            <span>{formatMoney(quote.totalCents, quote.currency, locale)}</span>
           </p>
         </aside>
       ) : null}
@@ -203,8 +204,16 @@ export function EventRegisterForm({
       ) : null}
       <CaptchaFields challenge={captcha} label={labels.captcha ?? "CAPTCHA"} />
       <Button type="submit">{labels.submit}</Button>
-      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-      {success ? <p className="text-sm text-zinc-700">{labels.success}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p role="status" className="text-sm text-zinc-700">
+          {labels.success}
+        </p>
+      ) : null}
     </form>
   );
 }

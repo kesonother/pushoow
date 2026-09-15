@@ -8,6 +8,8 @@ import { getServices } from "@/server/container";
 import Link from "next/link";
 import { Card } from "@/ui/card";
 import { CreateOrganizationForm } from "@/ui/create-organization-form";
+import { EmptyState } from "@/ui/empty-state";
+import { OnboardingChecklist } from "@/ui/onboarding-checklist";
 import { SiteHeader } from "@/ui/site-header";
 
 export default async function DashboardPage() {
@@ -25,19 +27,31 @@ export default async function DashboardPage() {
   const canCreate = staffCanCreateOrganizations(
     accessible.filter((item) => !item.actor.viaAgency).map((item) => item.actor.role),
   );
+  const organizer = accessible[0]
+    ? await services.onboarding.organizerProgress({
+        userId: session.user.id,
+        organizationId: accessible[0].organization.id,
+      })
+    : null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.title}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.title}</h1>
+        {organizer ? <OnboardingChecklist title={t.onboarding.titleOrganizer} progress={organizer} t={t} /> : null}
         {canCreate ? (
           <CreateOrganizationForm labels={{ create: t.dashboard.create, name: t.dashboard.name }} />
         ) : (
           <p className="text-sm text-zinc-600">{t.dashboard.checkinOnly}</p>
         )}
         {accessible.length === 0 ? (
-          <p className="text-zinc-600">{t.dashboard.empty}</p>
+          <EmptyState
+            title={t.dashboard.empty}
+            body={t.emptyState.organizations}
+            actionHref="/dashboard"
+            actionLabel={t.emptyState.createOrganization}
+          />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
             {accessible.map(({ organization, actor }) => {
@@ -51,27 +65,27 @@ export default async function DashboardPage() {
                       {organization.slug}
                       {actor.viaAgency ? ` · ${t.dashboard.viaAgency}` : ""}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm underline">
+                    <div className="mt-3 flex flex-wrap gap-1 text-sm">
                       {full ? (
                         <>
-                          <Link href={`/dashboard/organizations/${organization.id}`}>
+                          <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href={`/dashboard/organizations/${organization.id}`}>
                             {t.dashboard.insights}
                           </Link>
-                          <Link href={`/dashboard/organizations/${organization.id}/calendars`}>
+                          <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href={`/dashboard/organizations/${organization.id}/calendars`}>
                             {t.dashboard.calendars}
                           </Link>
-                          <Link href={`/dashboard/organizations/${organization.id}/members`}>
+                          <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href={`/dashboard/organizations/${organization.id}/members`}>
                             {t.dashboard.members}
                           </Link>
-                          <Link href={`/dashboard/organizations/${organization.id}/settings`}>
+                          <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href={`/dashboard/organizations/${organization.id}/settings`}>
                             {t.dashboard.settings}
                           </Link>
-                          <Link href={`/dashboard/organizations/${organization.id}/payments`}>
+                          <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href={`/dashboard/organizations/${organization.id}/payments`}>
                             {t.dashboard.payments}
                           </Link>
                         </>
                       ) : null}
-                      {door ? <Link href="/check-in">{t.nav.checkin}</Link> : null}
+                      {door ? <Link className="inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium text-zinc-600 hover:bg-[#FAFAFA]" href="/check-in">{t.nav.checkin}</Link> : null}
                     </div>
                   </Card>
                 </li>

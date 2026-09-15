@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -11,6 +12,7 @@ export function CreateOrganizationForm({
   labels: { create: string; name: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -26,10 +28,11 @@ export function CreateOrganizationForm({
     setPending(false);
 
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to create organization");
+      setError(apiMessage(payload, t.errors.unableToCreateOrganization));
       return;
     }
 
+    router.push(`/dashboard/organizations/${payload.data.id}/calendars?template=meetup`);
     router.refresh();
   }
 

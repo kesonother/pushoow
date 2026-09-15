@@ -37,7 +37,7 @@ export function EventRoster({
       {!hidden ? (
         <ul className="grid gap-2">
           {entries.map((entry) => (
-            <li key={entry.id} className="rounded-xl border border-zinc-200 px-3 py-2 text-sm">
+            <li key={entry.id} className="rounded-xl border border-[#E8E8E8] px-3 py-2 text-sm">
               {entry.displayName ?? "—"}
             </li>
           ))}

@@ -45,6 +45,11 @@ import {
 } from "@/db/repositories/organization-repo";
 import { createHmacTokenSigner } from "@/lib/access-token";
 import { getEnv } from "@/lib/env";
+import { createOnboardingService } from "@/domain/onboarding/service";
+import { createSeoService } from "@/domain/seo/service";
+import { createReferralService } from "@/domain/referral/service";
+import { createEmbedService } from "@/domain/embed/service";
+import { childLogger } from "@/lib/logger";
 import { createCalendarService } from "@/domain/calendar/service";
 import { createFollowService } from "@/domain/calendar/follow-service";
 import { createMembershipService } from "@/domain/calendar/membership-service";
@@ -143,11 +148,26 @@ import {
 } from "@/db/repositories/support-repo";
 import { createDrizzleMobileDeviceRepository } from "@/db/repositories/mobile-repo";
 import {
+  createDrizzleAIConsentRepository,
+  createDrizzleAIGenerationRepository,
+  createDrizzleAIPolicyRepository,
+} from "@/db/repositories/ai-repo";
+import { createAIService } from "@/domain/ai/service";
+import { createAIProviderRegistry } from "@/domain/ai/registry";
+import { createHeuristicImageProvider, createHeuristicTextProvider } from "@/integrations/ai/heuristic";
+import { unconfiguredImageProvider, unconfiguredTextProvider } from "@/integrations/ai/unconfigured";
+import { createOpenAIImageProvider, createOpenAITextProvider } from "@/integrations/ai/openai";
+import {
   createDrizzleAnalyticsPlanRepository,
   createDrizzleAttributionRepository,
   createDrizzlePageViewRepository,
   createDrizzleSnapshotRepository,
 } from "@/db/repositories/analytics-repo";
+import {
+  createDrizzleEmbedImpressionRepository,
+  createDrizzleReferralCodeRepository,
+  createDrizzleReferralConversionRepository,
+} from "@/db/repositories/growth-repo";
 import {
   createDrizzleCcpaRepository,
   createDrizzleConsentRepository,
@@ -363,6 +383,31 @@ export function getServices() {
     subjects: createDrizzlePrivacySubjects(db),
     captcha,
   });
+  const onboarding = createOnboardingService({
+    calendars,
+    events,
+    registrations: eventRegistrations,
+    followers,
+    organizationIdsForUser: async (userId) => {
+      const memberships = await members.listByUser(userId);
+      return [...new Set(memberships.map((item) => item.organizationId))];
+    },
+    scheduleLifecycle: async (input) => {
+      await jobs.enqueue({
+        type: "onboarding.lifecycle",
+        payload: { userId: input.userId, email: input.email, templateKey: input.key },
+        availableAt: input.availableAt,
+        idempotencyKey: `onboarding:${input.userId}:${input.key}`,
+      });
+    },
+  });
+  const skipOnboarding = async (work: () => Promise<unknown>): Promise<void> => {
+    try {
+      await work();
+    } catch (error) {
+      childLogger({ service: "onboarding" }).warn({ err: error }, "Onboarding hook skipped");
+    }
+  };
   const registrations = createRegistrationService({
     events,
     registrations: eventRegistrations,
@@ -387,6 +432,16 @@ export function getServices() {
     integrations,
     publicWebhooks: publicApi,
     entitlements,
+    onRegistered: (registration) => {
+      if (!registration.userId) return Promise.resolve();
+      return skipOnboarding(() =>
+        onboarding.track({
+          userId: registration.userId as string,
+          name: "first_rsvp",
+          organizationId: registration.organizationId,
+        }),
+      );
+    },
     notify: {
       async notify(input) {
         const templateKey =
@@ -442,6 +497,14 @@ export function getServices() {
       if (!organization) return null;
       return { logoUrl: organization.logoUrl, primaryColor: organization.primaryColor };
     },
+    onCreated: ({ actor, calendar }) =>
+      skipOnboarding(() =>
+        onboarding.track({
+          userId: actor.userId,
+          name: "calendar_created",
+          organizationId: calendar.organizationId,
+        }),
+      ),
   });
   const eventService = createEventService({
     events,
@@ -468,6 +531,14 @@ export function getServices() {
         }
       },
     },
+    onActivation: ({ name, actor, event }) =>
+      skipOnboarding(() =>
+        onboarding.track({
+          userId: actor.userId,
+          name,
+          organizationId: event.organizationId,
+        }),
+      ),
   });
   const imports = createImportService({
     imports: createDrizzleImportRepository(db),
@@ -520,6 +591,37 @@ export function getServices() {
       fcm: unconfiguredMobilePush("fcm"),
     },
   });
+  const discovery = createDiscoveryService({
+    events,
+    calendars,
+    registrations: eventRegistrations,
+    tickets,
+    followers,
+    profiles,
+  });
+  const heuristicText = createHeuristicTextProvider();
+  const heuristicImage = createHeuristicImageProvider();
+  const openaiText = createOpenAITextProvider({ apiKey: env.OPENAI_API_KEY });
+  const openaiImage = createOpenAIImageProvider({ apiKey: env.OPENAI_API_KEY });
+  const ai = createAIService({
+    providers: createAIProviderRegistry({
+      text: [heuristicText, openaiText, unconfiguredTextProvider],
+      image: [heuristicImage, openaiImage, unconfiguredImageProvider],
+      defaultTextId: env.AI_TEXT_PROVIDER ?? "heuristic",
+      defaultImageId: env.AI_IMAGE_PROVIDER ?? "unconfigured",
+    }),
+    generations: createDrizzleAIGenerationRepository(db),
+    consents: createDrizzleAIConsentRepository(db),
+    policies: createDrizzleAIPolicyRepository(db),
+    events,
+    calendars,
+    followers,
+    messages: eventChatMessages,
+    discovery,
+    analytics,
+    entitlements,
+    jobs,
+  });
 
   return {
     db,
@@ -546,6 +648,16 @@ export function getServices() {
       integrations,
       publicWebhooks: publicApi,
       profiles,
+      onCheckedIn: ({ registration }) => {
+        if (!registration.userId) return Promise.resolve();
+        return skipOnboarding(() =>
+          onboarding.track({
+            userId: registration.userId as string,
+            name: "first_checkin",
+            organizationId: registration.organizationId,
+          }),
+        );
+      },
       realtime: checkInRealtimeHub,
       listOrganizerEmails: async (organizationId) => {
         const orgMembers = await members.listByOrganization(organizationId);
@@ -600,14 +712,7 @@ export function getServices() {
     coupons,
     addOns,
     geocoder,
-    discovery: createDiscoveryService({
-      events,
-      calendars,
-      registrations: eventRegistrations,
-      tickets,
-      followers,
-      profiles,
-    }),
+    discovery,
     publicEvents: createPublicEventService({
       events,
       calendars,
@@ -623,6 +728,14 @@ export function getServices() {
       subscriptions,
       calendarMembers,
       orgMembers: members,
+      onFollowed: (follower) =>
+        skipOnboarding(() =>
+          onboarding.track({
+            userId: follower.userId,
+            name: "first_follow",
+            organizationId: follower.organizationId,
+          }),
+        ),
     }),
     calendarMemberships: createMembershipService({
       calendars,
@@ -680,6 +793,15 @@ export function getServices() {
       },
     }),
     analytics,
+    onboarding,
+    seo: createSeoService({ events, calendars }),
+    referrals: createReferralService({
+      codes: createDrizzleReferralCodeRepository(db),
+      conversions: createDrizzleReferralConversionRepository(db),
+    }),
+    embeds: createEmbedService({
+      impressions: createDrizzleEmbedImpressionRepository(db),
+    }),
     calendarRepo: calendars,
     eventRepo: events,
     eventRegistrations,
@@ -691,5 +813,6 @@ export function getServices() {
     billing,
     support,
     mobile,
+    ai,
   };
 }

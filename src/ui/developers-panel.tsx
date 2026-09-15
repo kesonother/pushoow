@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PUBLIC_WEBHOOK_EVENTS, type PublicWebhookEventType } from "@/domain/public-api/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 type Labels = {
@@ -36,6 +37,7 @@ export function DevelopersPanel({
   initialWebhooks: WebhookView[];
   labels: Labels;
 }) {
+  const { t } = useI18n();
   const [keys, setKeys] = useState(initialKeys);
   const [webhooks, setWebhooks] = useState(initialWebhooks);
   const [deliveries, setDeliveries] = useState<Record<string, DeliveryView[]>>({});
@@ -47,7 +49,7 @@ export function DevelopersPanel({
   async function load() {
     const response = await fetch(`/api/v1/organizations/${organizationId}/developers`);
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message ?? "Unable to load");
+    if (!response.ok) throw new Error(apiMessage(payload, t.errors.unableToLoad));
     setKeys(payload.data.keys);
     setWebhooks(payload.data.webhooks);
   }
@@ -122,7 +124,7 @@ export function DevelopersPanel({
   return (
     <div className="flex flex-col gap-8">
       <p className="text-sm text-zinc-600">{labels.hint}</p>
-      <a href="/docs/api" className="text-sm underline">
+      <a href="/docs/api" className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
         {labels.docs}
       </a>
       {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
@@ -150,7 +152,7 @@ export function DevelopersPanel({
         </form>
         <ul className="flex flex-col gap-2 text-sm">
           {keys.map((key) => (
-            <li key={key.id} className="rounded-lg border border-zinc-200 px-3 py-2">
+            <li key={key.id} className="rounded-lg border border-[#E8E8E8] px-3 py-2">
               {key.name} · {key.prefix}… · {key.plan}
             </li>
           ))}
@@ -179,9 +181,9 @@ export function DevelopersPanel({
         </form>
         <ul className="flex flex-col gap-3">
           {webhooks.map((webhook) => (
-            <li key={webhook.id} className="rounded-lg border border-zinc-200 p-3 text-sm">
+            <li key={webhook.id} className="rounded-lg border border-[#E8E8E8] p-3 text-sm">
               <p>{webhook.url}</p>
-              <p className="text-zinc-500">{webhook.events.join(", ")}</p>
+              <p className="text-zinc-600">{webhook.events.join(", ")}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" onClick={() => loadDeliveries(webhook.id)}>
                   {labels.deliveries}
@@ -194,7 +196,7 @@ export function DevelopersPanel({
                 <p key={delivery.id} className="mt-2 text-xs text-zinc-600">
                   {delivery.event} · {delivery.status} · {delivery.attempts} · {delivery.lastError ?? "ok"}
                   {delivery.status !== "delivered" ? (
-                    <button type="button" className="ml-2 underline" onClick={() => retry(webhook.id, delivery.id)}>
+                    <button type="button" className="ms-2 underline" onClick={() => retry(webhook.id, delivery.id)}>
                       {labels.retry}
                     </button>
                   ) : null}

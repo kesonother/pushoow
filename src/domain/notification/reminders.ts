@@ -1,3 +1,5 @@
+import { formatEventDateTime } from "@/i18n/datetime";
+
 const HOUR_MS = 60 * 60 * 1000;
 
 export const REMINDER_OFFSETS = {
@@ -22,10 +24,6 @@ export function reminderSchedule(startsAt: Date, timezone: string): Array<{ key:
   }));
 }
 
-export function formatInTimezone(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+export function formatInTimezone(date: Date, timeZone: string, locale = "en"): string {
+  return formatEventDateTime(date, timeZone, locale);
 }

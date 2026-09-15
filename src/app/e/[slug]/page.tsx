@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/auth/session";
 import { NotFoundError } from "@/domain/errors";
+import { formatEventDateTime } from "@/i18n/datetime";
 import { getI18n } from "@/i18n/server";
+import { pluralize } from "@/i18n/plural";
 import { getServices } from "@/server/container";
 import { CalendarFollowButton } from "@/ui/calendar-follow-button";
 import { Card } from "@/ui/card";
@@ -11,9 +13,14 @@ import { EventChat } from "@/ui/event-chat";
 import { EventRegisterForm } from "@/ui/event-register-form";
 import { EventRoster } from "@/ui/event-roster";
 import { EventViewBeacon } from "@/ui/event-view-beacon";
+import { eventJsonLd } from "@/domain/seo/schema";
+import { eventPageMetadata } from "@/domain/seo/metadata";
+import { JsonLd } from "@/ui/json-ld";
+import { ReferralCard } from "@/ui/referral-card";
+import { ShareEventCard } from "@/ui/share-event-card";
 import { SiteHeader } from "@/ui/site-header";
 
-type PageProps = { params: Promise<{ slug: string }> };
+type PageProps = { params: Promise<{ slug: string }>; searchParams: Promise<{ onboarding?: string }> };
 
 async function load(slug: string) {
   try {
@@ -24,25 +31,26 @@ async function load(slug: string) {
   }
 }
 
+export async function generateStaticParams() {
+  try {
+    const slugs = await getServices().seo.indexableEventSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const view = await load(slug);
   if (!view) return { title: "Event", robots: { index: false, follow: false } };
-  return {
-    title: view.event.title,
-    description: view.event.description ?? view.event.title,
-    alternates: { canonical: `/e/${view.event.slug}` },
-    openGraph: {
-      title: view.event.title,
-      description: view.event.description ?? view.event.title,
-      images: view.event.coverImageUrl ? [view.event.coverImageUrl] : undefined,
-    },
-  };
+  return eventPageMetadata(view.event, view.calendar);
 }
 
-export default async function EventPublicPage({ params }: PageProps) {
+export default async function EventPublicPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { t } = await getI18n();
+  const query = await searchParams;
+  const { t, locale } = await getI18n();
   const session = await getSession();
   const view = await load(slug);
   if (!view) notFound();
@@ -67,29 +75,61 @@ export default async function EventPublicPage({ params }: PageProps) {
       .join(" · ") || null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn={Boolean(session?.user)} />
+      <JsonLd
+        data={eventJsonLd({
+          event,
+          calendarName: view.calendar.name,
+          remaining: view.remaining,
+        })}
+      />
       <EventViewBeacon eventId={event.id} />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8">
         {event.coverImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.coverImageUrl} alt="" className="h-48 w-full rounded-3xl object-cover sm:h-64" />
+          <img src={event.coverImageUrl} alt="" className="h-48 w-full rounded-[10px] object-cover sm:h-64" />
+        ) : null}
+        {query.onboarding === "share" ? (
+          <ShareEventCard
+            path={sharePath}
+            title={t.onboarding.shareTitle}
+            copyLabel={t.onboarding.copyLink}
+            copiedLabel={t.onboarding.copied}
+          />
         ) : null}
         <header className="grid gap-2">
-          <p className="text-sm uppercase tracking-wide text-zinc-500">{view.lifecycle}</p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{event.title}</h1>
+          <p className="text-sm uppercase tracking-wide text-zinc-600">{view.lifecycle}</p>
+          <h1 className="text-[32px] font-extrabold tracking-tight text-[#111111] sm:text-[40px]">{event.title}</h1>
           <p className="text-zinc-600">
-            {event.startsAt.toLocaleString(undefined, { timeZone: event.timezone })} · {event.timezone}
+            {formatEventDateTime(event.startsAt, event.timezone, locale)} · {event.timezone}
           </p>
           {location ? <p className="text-zinc-600">{location}</p> : null}
           {view.remaining != null ? (
-            <p className="text-sm text-zinc-500">
-              {view.remaining} {t.event.remaining}
+            <p className="text-sm text-zinc-600">
+              {pluralize(locale, view.remaining, {
+                zero: t.event.remainingZero,
+                one: t.event.remainingOne,
+                two: t.event.remainingTwo,
+                few: t.event.remainingFew,
+                many: t.event.remainingMany,
+                other: t.event.remainingOther,
+              })}
             </p>
           ) : null}
         </header>
         {view.descriptionHtml ? (
           <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: view.descriptionHtml }} />
+        ) : null}
+        {session?.user ? (
+          <ReferralCard
+            eventId={event.id}
+            title={t.referral.attendeeTitle}
+            body={t.referral.attendeeBody}
+            copyLabel={t.referral.copy}
+            copiedLabel={t.onboarding.copied}
+            rewardLabel={t.referral.reward}
+          />
         ) : null}
         <Card>
           <h2 className="mb-3 text-lg font-semibold">{t.event.register}</h2>
@@ -174,7 +214,7 @@ export default async function EventPublicPage({ params }: PageProps) {
                   <Card>
                     {item.title}
                     {item.startsAt
-                      ? ` · ${item.startsAt.toLocaleString(undefined, { timeZone: event.timezone })}`
+                      ? ` · ${formatEventDateTime(item.startsAt, event.timezone, locale)}`
                       : ""}
                   </Card>
                 </li>
@@ -232,7 +272,7 @@ export default async function EventPublicPage({ params }: PageProps) {
             <iframe
               title={event.customPinLabel ?? event.venueName ?? event.title}
               src={view.mapEmbedUrl}
-              className="h-56 w-full rounded-2xl border border-zinc-200 sm:h-72"
+              className="h-56 w-full rounded-xl border border-[#E8E8E8] sm:h-72"
               loading="lazy"
             />
             {view.mapUrl ? (
@@ -242,7 +282,7 @@ export default async function EventPublicPage({ params }: PageProps) {
             ) : null}
           </section>
         ) : view.mapUrl ? (
-          <a className="text-sm underline" href={view.mapUrl}>
+          <a className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70" href={view.mapUrl}>
             OpenStreetMap
           </a>
         ) : null}

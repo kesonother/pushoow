@@ -50,6 +50,7 @@ export type EventServiceDeps = {
   publicWebhooks?: { emit: (event: PublicWebhookEvent) => Promise<void> };
   clock?: Clock;
   ids?: IdGenerator;
+  onActivation?: (input: { name: "event_created" | "event_published"; actor: Actor; event: Event }) => Promise<void>;
 };
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -186,7 +187,9 @@ export function createEventService(deps: EventServiceDeps) {
       deletedAt: null,
     });
 
+    await deps.onActivation?.({ name: "event_created", actor, event: created });
     if (isPublishStatus(created.status)) {
+      await deps.onActivation?.({ name: "event_published", actor, event: created });
       await deps.notify?.notify({
         organizationId: created.organizationId,
         calendarId: created.calendarId,
@@ -339,6 +342,9 @@ export function createEventService(deps: EventServiceDeps) {
       });
     } else if (isPublishStatus(nextStatus)) {
       const change = isPublishStatus(event.status) ? "updated" : "published";
+      if (change === "published") {
+        await deps.onActivation?.({ name: "event_published", actor, event: updated });
+      }
       await deps.notify?.notify({
         organizationId: updated.organizationId,
         calendarId: updated.calendarId,

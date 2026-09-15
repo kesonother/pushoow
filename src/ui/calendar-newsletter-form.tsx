@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -11,6 +12,7 @@ export function CalendarNewsletterForm({
   calendarId: string;
   labels: { title: string; email: string; submit: string; success: string };
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
@@ -27,7 +29,7 @@ export function CalendarNewsletterForm({
     const payload = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to subscribe");
+      setError(apiMessage(payload, t.errors.unableToSubscribe));
       return;
     }
     setSuccess(true);

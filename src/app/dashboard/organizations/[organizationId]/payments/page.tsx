@@ -17,7 +17,7 @@ export default async function OrganizationPaymentsPage({
   const session = await getSession();
   if (!session?.user) redirect("/login");
   const { organizationId } = await params;
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const services = getServices();
   let account;
   let report;
@@ -36,10 +36,10 @@ export default async function OrganizationPaymentsPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.paymentsTitle}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.paymentsTitle}</h1>
         <Card>
           <StripeConnectCard
             organizationId={organizationId}
@@ -58,19 +58,19 @@ export default async function OrganizationPaymentsPage({
           <dl className="grid gap-2 text-sm">
             <div className="flex justify-between gap-4">
               <dt>{t.event.total}</dt>
-              <dd>{formatMoney(report.capturedCents, "EUR")}</dd>
+              <dd>{formatMoney(report.capturedCents, "EUR", locale)}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t.dashboard.paymentsRefunded}</dt>
-              <dd>{formatMoney(report.refundedCents, "EUR")}</dd>
+              <dd>{formatMoney(report.refundedCents, "EUR", locale)}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t.event.tax}</dt>
-              <dd>{formatMoney(report.taxCents, "EUR")}</dd>
+              <dd>{formatMoney(report.taxCents, "EUR", locale)}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t.event.platformFee}</dt>
-              <dd>{formatMoney(report.platformFeeCents, "EUR")}</dd>
+              <dd>{formatMoney(report.platformFeeCents, "EUR", locale)}</dd>
             </div>
           </dl>
         </Card>

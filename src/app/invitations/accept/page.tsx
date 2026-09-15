@@ -18,9 +18,9 @@ export default async function AcceptInvitationPage({
   const { t } = await getI18n();
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
+      <main id="content" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-12">
         <Card>
           <AcceptInvitationForm token={token ?? ""} title={t.invitation.title} submit={t.invitation.accept} />
         </Card>

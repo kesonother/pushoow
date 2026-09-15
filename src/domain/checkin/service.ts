@@ -47,6 +47,7 @@ export function createCheckInService(deps: {
   profiles?: ProfileRepository;
   listOrganizerEmails?: (organizationId: string) => Promise<string[]>;
   notify?: CheckInNotifier;
+  onCheckedIn?: (input: { registration: EventRegistration; record: CheckInRecord }) => Promise<void>;
   integrations?: IntegrationEmitter;
   publicWebhooks?: { emit: (event: PublicWebhookEvent) => Promise<void> };
   realtime?: CheckInRealtimeHub;
@@ -248,6 +249,7 @@ export function createCheckInService(deps: {
       organizationId: input.event.organizationId,
       data: { id: record.id, eventId: input.event.id, registrationId: input.registration.id },
     });
+    await deps.onCheckedIn?.({ registration: input.registration, record });
     return resultFor("checked_in", input.registration, record, await profileNameFor(input.registration));
   }
 

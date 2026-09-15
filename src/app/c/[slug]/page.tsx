@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/auth/session";
 import { NotFoundError } from "@/domain/errors";
+import { formatEventDateTime } from "@/i18n/datetime";
 import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { CalendarFollowButton } from "@/ui/calendar-follow-button";
@@ -10,7 +11,10 @@ import { CalendarFollowPrefs } from "@/ui/calendar-follow-prefs";
 import { CalendarJoinForm } from "@/ui/calendar-join-form";
 import { CalendarNewsletterForm } from "@/ui/calendar-newsletter-form";
 import { Card } from "@/ui/card";
+import { JsonLd } from "@/ui/json-ld";
 import { SiteHeader } from "@/ui/site-header";
+import { calendarPageMetadata } from "@/domain/seo/metadata";
+import { calendarJsonLd } from "@/domain/seo/schema";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -25,59 +29,42 @@ async function loadView(slug: string, userId?: string) {
   }
 }
 
+export async function generateStaticParams() {
+  try {
+    const slugs = await getServices().seo.indexableCalendarSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const view = await loadView(slug);
   if (!view) {
     return { title: "Calendar", robots: { index: false, follow: false } };
   }
-
-  const calendar = view.calendar;
-  const index = calendar.visibility === "public";
-  return {
-    title: calendar.name,
-    description: calendar.description ?? calendar.name,
-    alternates: { canonical: `/c/${calendar.slug}` },
-    robots: { index, follow: index },
-    openGraph: {
-      title: calendar.name,
-      description: calendar.description ?? calendar.name,
-      images: calendar.logoUrl ? [calendar.logoUrl] : undefined,
-    },
-  };
+  return calendarPageMetadata(view.calendar);
 }
 
 export default async function CalendarPublicPage({ params }: PageProps) {
   const { slug } = await params;
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const session = await getSession();
   const view = await loadView(slug, session?.user?.id);
   if (!view) notFound();
 
   const calendar = view.calendar;
   const accent = calendar.primaryColor ?? "#111111";
-  const jsonLd =
-    view.access === "full"
-      ? {
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: calendar.name,
-          description: calendar.description,
-          url: `/c/${calendar.slug}`,
-          logo: calendar.logoUrl,
-          sameAs: calendar.socialLink ? [calendar.socialLink] : undefined,
-        }
-      : null;
+  const jsonLd = view.access === "full" ? calendarJsonLd({ calendar }) : null;
 
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader t={t} signedIn={Boolean(session?.user)} />
-      {jsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      ) : null}
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
+      {jsonLd ? <JsonLd data={jsonLd} /> : null}
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
         <header
-          className="overflow-hidden rounded-3xl border border-zinc-200 bg-white"
+          className="overflow-hidden rounded-xl border border-[#E8E8E8] bg-white"
           style={{ borderColor: accent }}
         >
           {calendar.bannerUrl ? (
@@ -90,7 +77,7 @@ export default async function CalendarPublicPage({ params }: PageProps) {
               <img
                 src={calendar.logoUrl}
                 alt=""
-                className="h-20 w-20 rounded-2xl border border-zinc-200 object-cover"
+                className="h-20 w-20 rounded-xl border border-[#E8E8E8] object-cover"
               />
             ) : (
               <div
@@ -102,11 +89,11 @@ export default async function CalendarPublicPage({ params }: PageProps) {
               </div>
             )}
             <div className="flex-1">
-              <h1 className="text-3xl font-semibold tracking-tight">{calendar.name}</h1>
+              <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{calendar.name}</h1>
               {calendar.description ? (
                 <p className="mt-2 max-w-2xl text-zinc-600">{calendar.description}</p>
               ) : null}
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="mt-2 text-sm text-zinc-600">
                 {view.followerCount} {t.calendar.followers}
               </p>
             </div>
@@ -164,7 +151,7 @@ export default async function CalendarPublicPage({ params }: PageProps) {
             ) : null}
 
             {view.tags.length > 0 ? (
-              <ul className="flex flex-wrap gap-2" aria-label="Tags">
+              <ul className="flex flex-wrap gap-2" aria-label={t.common.tags}>
                 {view.tags.map((tag) => (
                   <li key={tag} className="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-800">
                     {tag}
@@ -186,7 +173,7 @@ export default async function CalendarPublicPage({ params }: PageProps) {
                           </Link>
                         </h3>
                         <p className="mt-1 text-sm text-zinc-600">
-                          {event.startsAt.toLocaleString(calendar.locale, { timeZone: calendar.timezone })}
+                          {formatEventDateTime(event.startsAt, calendar.timezone, locale)}
                         </p>
                       </Card>
                     </li>
@@ -202,7 +189,7 @@ export default async function CalendarPublicPage({ params }: PageProps) {
               ) : (
                 view.eventsByMonth.map((group) => (
                   <div key={group.key} className="mb-6">
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-600">
                       {group.label}
                     </h3>
                     <ul className="grid gap-3">
@@ -217,10 +204,8 @@ export default async function CalendarPublicPage({ params }: PageProps) {
                             {event.description ? (
                               <p className="mt-1 text-sm text-zinc-600">{event.description}</p>
                             ) : null}
-                            <p className="mt-2 text-sm text-zinc-500">
-                              {event.startsAt.toLocaleString(calendar.locale, {
-                                timeZone: calendar.timezone,
-                              })}
+                            <p className="mt-2 text-sm text-zinc-600">
+                              {formatEventDateTime(event.startsAt, calendar.timezone, locale)}
                             </p>
                           </Card>
                         </li>

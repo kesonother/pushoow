@@ -67,6 +67,30 @@ const EMAIL_V1: Record<EmailTemplateKey, { subject: string; body: string }> = {
     subject: "New reply on a support ticket",
     body: "{{details}}",
   },
+  welcome_day0: {
+    subject: "Welcome to Pushoow",
+    body: "Your account is ready. Create a calendar, add your first event, publish, then share the public link.",
+  },
+  welcome_create_calendar: {
+    subject: "Create your first calendar",
+    body: "A Meetup template is ready. Create your first calendar to start hosting.",
+  },
+  welcome_first_event: {
+    subject: "Publish your First Meetup",
+    body: "Use the First Meetup template, publish the event, then share the public page.",
+  },
+  reengagement_inactive: {
+    subject: "Your community is waiting",
+    body: "You have not published yet. Come back to create a calendar or RSVP to an event.",
+  },
+  feature_education: {
+    subject: "Discover, follow, and check in",
+    body: "Find public events, follow calendars you care about, and use check-in at the door.",
+  },
+  product_newsletter_optin: {
+    subject: "Want product updates from Pushoow?",
+    body: "You can opt in to the product newsletter from your notification preferences. Transactional emails stay on.",
+  },
 };
 
 const SMS_V1: Record<string, string> = {

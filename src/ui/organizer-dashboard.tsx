@@ -9,10 +9,12 @@ export function OrganizerDashboardView({
   dashboard,
   advanced,
   labels,
+  locale = "en",
 }: {
   organizationId: string;
   dashboard: OrganizerDashboard;
   advanced: AdvancedAnalytics;
+  locale?: string;
   labels: {
     followers: string;
     upcoming: string;
@@ -31,24 +33,30 @@ export function OrganizerDashboardView({
     <div className="grid gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
-          <p className="text-sm text-zinc-500">{labels.followers}</p>
+          <p className="text-sm text-zinc-600">{labels.followers}</p>
           <p className="text-3xl font-semibold tabular-nums">{dashboard.followers}</p>
         </Card>
         <Card>
-          <p className="text-sm text-zinc-500">{labels.rsvps}</p>
+          <p className="text-sm text-zinc-600">{labels.rsvps}</p>
           <p className="text-3xl font-semibold tabular-nums">{lastRsvps?.count ?? 0}</p>
         </Card>
         <Card>
-          <p className="text-sm text-zinc-500">{labels.revenue}</p>
+          <p className="text-sm text-zinc-600">{labels.revenue}</p>
           <p className="text-3xl font-semibold tabular-nums">
-            {formatMoney(lastRevenue?.capturedCents ?? 0, "EUR")}
+            {formatMoney(lastRevenue?.capturedCents ?? 0, "EUR", locale)}
           </p>
         </Card>
       </div>
       <Card>
         <h2 className="text-lg font-medium">{labels.upcoming}</h2>
         <ul className="mt-3 grid gap-2 text-sm">
-          {dashboard.upcomingEvents.length === 0 ? <li>—</li> : null}
+          {dashboard.upcomingEvents.length === 0 ? (
+            <li>
+              <Link className="underline" href={`/dashboard/organizations/${organizationId}/calendars`}>
+                {labels.upcoming}
+              </Link>
+            </li>
+          ) : null}
           {dashboard.upcomingEvents.map((event) => (
             <li key={event.id} className="flex justify-between gap-3">
               <Link className="underline" href={`/dashboard/organizations/${organizationId}/events/${event.id}`}>
@@ -81,7 +89,7 @@ export function OrganizerDashboardView({
                 {event.title}
               </Link>
               <span>
-                {event.rsvps} · {event.attendance} · {formatMoney(event.revenueCents, "EUR")}
+                {event.rsvps} · {event.attendance} · {formatMoney(event.revenueCents, "EUR", locale)}
               </span>
             </li>
           ))}
@@ -105,7 +113,7 @@ export function OrganizerDashboardView({
             </div>
             <div className="flex justify-between gap-4">
               <dt>Forecast</dt>
-              <dd>{formatMoney(advanced.forecast.nextMonthRevenueCents, "EUR")}</dd>
+              <dd>{formatMoney(advanced.forecast.nextMonthRevenueCents, "EUR", locale)}</dd>
             </div>
           </dl>
         ) : (

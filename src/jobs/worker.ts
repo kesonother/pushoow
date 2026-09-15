@@ -2,7 +2,8 @@ import { getDb } from "@/db/client";
 import { createJobQueue } from "@/jobs/queue";
 import { createDrizzleJobRepository } from "@/jobs/job-repo";
 import type { DispatchInput } from "@/domain/notification/service";
-import { logger } from "@/lib/logger";
+import type { LifecycleEmailKey } from "@/domain/onboarding/lifecycle";
+import { requestLogger } from "@/lib/logger";
 import { getServices } from "@/server/container";
 
 function dispatchFromJob(payload: Record<string, unknown>, fallbackKey: string): DispatchInput {
@@ -22,8 +23,9 @@ function dispatchFromJob(payload: Record<string, unknown>, fallbackKey: string):
 async function main() {
   const db = getDb();
   const queue = createJobQueue({ jobs: createDrizzleJobRepository(db) });
+  const log = requestLogger({ service: "worker" });
 
-  logger.info("Job worker started");
+  log.info("Job worker started");
 
   const tick = async () => {
     const services = getServices();
@@ -99,6 +101,21 @@ async function main() {
       "support.sla.tick": async () => {
         await services.support.processSlaTick();
       },
+      "onboarding.lifecycle": async (job) => {
+        const userId = String(job.payload.userId ?? "");
+        const email = String(job.payload.email ?? "");
+        const templateKey = String(job.payload.templateKey ?? "");
+        if (!userId || !email || !templateKey) return;
+        const allowed = await services.onboarding.shouldSend(userId, templateKey as LifecycleEmailKey);
+        if (!allowed) return;
+        await services.notifications.dispatch({
+          userId,
+          channel: "email",
+          to: email,
+          templateKey,
+          idempotencyKey: `onboarding:${userId}:${templateKey}`,
+        });
+      },
       "sync.run": async (job) => {
         await services.integrations.processSyncJob(job.payload);
       },
@@ -117,6 +134,9 @@ async function main() {
           (job.payload.headers as Record<string, string>) ?? {},
           String(job.payload.rawBody ?? ""),
         );
+      },
+      "ai.process": async (job) => {
+        await services.ai.processJob(job.payload);
       },
       "report.generate": async (job) => {
         const eventId = typeof job.payload.eventId === "string" ? job.payload.eventId : "";
@@ -145,7 +165,10 @@ async function main() {
     });
 
     if (processed) {
-      logger.info({ jobId: processed.id, type: processed.type, status: processed.status }, "Job processed");
+      log.info(
+        { jobId: processed.id, type: processed.type, status: processed.status, service: "worker" },
+        "Job processed",
+      );
     }
   };
 
@@ -156,6 +179,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error({ err: error }, "Job worker crashed");
+  requestLogger({ service: "worker" }).error({ err: error, service: "worker" }, "Job worker crashed");
   process.exit(1);
 });

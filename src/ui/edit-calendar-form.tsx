@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -35,6 +36,7 @@ export function EditCalendarForm({
   };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -64,7 +66,7 @@ export function EditCalendarForm({
     const payload = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to update calendar");
+      setError(apiMessage(payload, t.errors.unableToUpdateCalendar));
       return;
     }
     router.refresh();
@@ -77,7 +79,7 @@ export function EditCalendarForm({
     setPending(false);
     if (!response.ok) {
       const payload = await response.json();
-      setError(payload.error?.message ?? "Unable to delete calendar");
+      setError(apiMessage(payload, t.errors.unableToDeleteCalendar));
       return;
     }
     router.push("/dashboard");
@@ -86,7 +88,7 @@ export function EditCalendarForm({
   return (
     <form action={onSubmit} className="grid gap-4">
       <Input name="name" label={labels.name} defaultValue={calendar.name} required />
-      <Input name="slug" label="Slug" defaultValue={calendar.slug} required />
+      <Input name="slug" label={t.calendar.slug} defaultValue={calendar.slug} required />
       <Input name="description" label={labels.description} defaultValue={calendar.description ?? ""} />
       <Input name="timezone" label={labels.timezone} defaultValue={calendar.timezone} />
       <Input name="defaultCurrency" label={labels.currency} defaultValue={calendar.defaultCurrency} />
@@ -97,20 +99,20 @@ export function EditCalendarForm({
           defaultValue={calendar.visibility}
           className="min-h-11 rounded-lg border border-zinc-300 bg-white px-3"
         >
-          <option value="public">public</option>
-          <option value="unlisted">unlisted</option>
-          <option value="private">private</option>
+          <option value="public">{t.common.visibilityPublic}</option>
+          <option value="unlisted">{t.common.visibilityUnlisted}</option>
+          <option value="private">{t.common.visibilityPrivate}</option>
         </select>
       </label>
-      <Input name="contactEmail" type="email" label="Email" defaultValue={calendar.contactEmail ?? ""} />
-      <Input name="postalAddress" label="Address" defaultValue={calendar.postalAddress ?? ""} />
-      <Input name="primaryColor" label="Color" defaultValue={calendar.primaryColor ?? ""} />
-      <Input name="socialLink" label="Social" defaultValue={calendar.socialLink ?? ""} />
+      <Input name="contactEmail" type="email" label={t.calendar.contactEmail} defaultValue={calendar.contactEmail ?? ""} />
+      <Input name="postalAddress" label={t.calendar.postalAddress} defaultValue={calendar.postalAddress ?? ""} />
+      <Input name="primaryColor" label={t.calendar.primaryColor} defaultValue={calendar.primaryColor ?? ""} />
+      <Input name="socialLink" label={t.calendar.socialLink} defaultValue={calendar.socialLink ?? ""} />
       <Input
         name="bannedWords"
-        label={labels.bannedWords ?? "Banned words"}
+        label={labels.bannedWords ?? t.event.bannedWords}
         defaultValue={(calendar.bannedWords ?? []).join(", ")}
-        hint="Comma-separated"
+        hint={t.calendar.bannedWordsHint}
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending}>

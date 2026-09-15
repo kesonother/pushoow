@@ -22,6 +22,7 @@ export const JOB_TYPES = [
   "billing.renewal.notify",
   "billing.grace.expire",
   "support.sla.tick",
+  "onboarding.lifecycle",
 ] as const;
 
 export type JobType = (typeof JOB_TYPES)[number];

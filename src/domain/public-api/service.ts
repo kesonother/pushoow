@@ -35,6 +35,7 @@ import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { childLogger } from "@/lib/logger";
+import { recordWebhookAttempt, recordWebhookFailed, recordWebhookSucceeded } from "@/observability/events";
 import { encodeJson, randomToken, sha256, signPayload, safeEqual, decodeJson } from "@/lib/token-crypto";
 
 const log = childLogger({ module: "public-api" });
@@ -415,6 +416,7 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
     const signature = signPublicWebhook(secret, timestamp, body);
     const attempts = delivery.attempts + 1;
     try {
+      recordWebhookAttempt();
       const response = await http.request({
         url: endpoint.url,
         method: "POST",
@@ -427,6 +429,7 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
         body,
       });
       if (response.status >= 200 && response.status < 300) {
+        recordWebhookSucceeded();
         return deps.deliveries.save({
           ...delivery,
           status: "delivered",
@@ -439,6 +442,7 @@ export function createPublicApiService(deps: PublicApiServiceDeps) {
       }
       throw new Error(`HTTP ${response.status}`);
     } catch (error) {
+      recordWebhookFailed();
       const nextRetryAt = new Date(clock.now().getTime() + webhookBackoffMs(attempts));
       const dead = clock.now().getTime() - delivery.createdAt.getTime() + webhookBackoffMs(attempts) > WEBHOOK_RETRY_WINDOW_MS;
       const saved = await deps.deliveries.save({

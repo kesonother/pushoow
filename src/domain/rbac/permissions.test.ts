@@ -36,6 +36,7 @@ describe("RBAC permissions", () => {
     expect(hasPermission("check_in_manager", "finance:read")).toBe(false);
     expect(hasPermission("check_in_manager", "members:invite")).toBe(false);
     expect(hasPermission("check_in_manager", "support:read")).toBe(false);
+    expect(hasPermission("check_in_manager", "ai:use")).toBe(false);
   });
 
   it("gives finance billing access without event mutation", () => {
@@ -44,6 +45,8 @@ describe("RBAC permissions", () => {
     expect(hasPermission("finance", "checkin:manage")).toBe(false);
     expect(hasPermission("finance", "support:write")).toBe(true);
     expect(hasPermission("finance", "support:manage")).toBe(false);
+    expect(hasPermission("finance", "ai:read")).toBe(true);
+    expect(hasPermission("finance", "ai:use")).toBe(false);
   });
 
   it("keeps read-only users from mutating data", () => {
@@ -52,6 +55,7 @@ describe("RBAC permissions", () => {
     expect(hasPermission("read_only", "calendars:update")).toBe(false);
     expect(hasPermission("read_only", "support:read")).toBe(true);
     expect(hasPermission("read_only", "support:write")).toBe(false);
+    expect(hasPermission("read_only", "ai:use")).toBe(false);
   });
 
   it("lets editors manage events but not members or billing", () => {
@@ -59,7 +63,8 @@ describe("RBAC permissions", () => {
     expect(hasPermission("editor", "members:invite")).toBe(false);
     expect(hasPermission("editor", "finance:write")).toBe(false);
     expect(hasPermission("editor", "checkin:manage")).toBe(true);
-    expect(hasPermission("editor", "support:write")).toBe(true);
+    expect(hasPermission("editor", "ai:use")).toBe(true);
+    expect(hasPermission("editor", "ai:read")).toBe(true);
     expect(hasPermission("editor", "support:manage")).toBe(false);
   });
 

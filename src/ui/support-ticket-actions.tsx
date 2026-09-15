@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TICKET_PRIORITIES, TICKET_STATUSES } from "@/domain/support/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
+import { textareaClassName } from "@/ui/control";
 
 export function SupportTicketActions({
   organizationId,
@@ -25,6 +27,7 @@ export function SupportTicketActions({
   };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function post(action: string, body: Record<string, unknown>) {
@@ -39,7 +42,7 @@ export function SupportTicketActions({
     );
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to update ticket");
+      setError(apiMessage(payload, t.errors.unableToUpdateTicket));
       return;
     }
     router.refresh();
@@ -58,12 +61,7 @@ export function SupportTicketActions({
       >
         <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900">
           {labels.message}
-          <textarea
-            name="body"
-            required
-            rows={4}
-            className="min-h-24 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-normal text-zinc-950 outline-none focus-visible:border-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-950/20"
-          />
+            <textarea name="body" required rows={4} className={textareaClassName} />
         </label>
         {canManage ? (
           <label className="flex items-center gap-2 text-sm text-zinc-700">
@@ -129,7 +127,11 @@ export function SupportTicketActions({
           </form>
         </>
       ) : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

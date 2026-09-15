@@ -8,10 +8,10 @@ export default async function UnsubscribePage() {
   const copy = t.notifications;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn={false} />
-      <main id="content" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{copy.unsubscribeTitle}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{copy.unsubscribeTitle}</h1>
         <p className="text-zinc-600">{copy.unsubscribeBody}</p>
         <Suspense fallback={<p>…</p>}>
           <UnsubscribeForm

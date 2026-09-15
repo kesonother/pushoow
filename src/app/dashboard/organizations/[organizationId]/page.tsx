@@ -7,6 +7,7 @@ import { requireFullDashboardActor } from "@/server/dashboard-access";
 import { getServices } from "@/server/container";
 import { OrganizerDashboardView } from "@/ui/organizer-dashboard";
 import { OrgNav } from "@/ui/org-nav";
+import { ReferralCard } from "@/ui/referral-card";
 import { SiteHeader } from "@/ui/site-header";
 
 export default async function OrganizationDashboardPage({
@@ -17,7 +18,7 @@ export default async function OrganizationDashboardPage({
   const session = await getSession();
   if (!session?.user) redirect("/login");
   const { organizationId } = await params;
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const services = getServices();
   let dashboard;
   let advanced;
@@ -37,14 +38,14 @@ export default async function OrganizationDashboardPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
-        <Link href="/dashboard" className="text-sm underline">
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+          <Link href="/dashboard" className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
           {t.dashboard.title}
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.insights}</h1>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.insights}</h1>
         </div>
         <OrgNav organizationId={organizationId} actor={actor} labels={t.dashboard} />
         <OrganizerDashboardView
@@ -52,6 +53,14 @@ export default async function OrganizationDashboardPage({
           dashboard={dashboard}
           advanced={advanced}
           labels={t.dashboard}
+          locale={locale}
+        />
+        <ReferralCard
+          title={t.referral.organizerTitle}
+          body={t.referral.organizerBody}
+          copyLabel={t.referral.copy}
+          copiedLabel={t.onboarding.copied}
+          rewardLabel={t.referral.reward}
         />
       </main>
     </div>

@@ -17,6 +17,9 @@ const envSchema = z.object({
     (value) => (value === undefined || value === "" ? undefined : Number(value)),
     z.number().int().min(0).max(10_000).optional(),
   ),
+  AI_TEXT_PROVIDER: z.string().min(1).optional(),
+  AI_IMAGE_PROVIDER: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -36,6 +39,9 @@ export function getEnv(): AppEnv {
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     STRIPE_TAX_ENABLED: process.env.STRIPE_TAX_ENABLED,
     PLATFORM_FEE_BPS: process.env.PLATFORM_FEE_BPS,
+    AI_TEXT_PROVIDER: process.env.AI_TEXT_PROVIDER,
+    AI_IMAGE_PROVIDER: process.env.AI_IMAGE_PROVIDER,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   });
   return cached;
 }

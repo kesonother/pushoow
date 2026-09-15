@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FUNCTIONAL_LEVELS, type Organization } from "@/domain/organization/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -32,6 +33,7 @@ export function OrganizationSettingsForm({
   };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -54,7 +56,7 @@ export function OrganizationSettingsForm({
     const payload = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to save");
+      setError(apiMessage(payload, t.errors.unableToSave));
       return;
     }
     router.refresh();
@@ -72,7 +74,7 @@ export function OrganizationSettingsForm({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to add domain");
+      setError(apiMessage(payload, t.errors.unableToAddDomain));
       return;
     }
     router.refresh();

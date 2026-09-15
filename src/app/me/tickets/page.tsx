@@ -4,6 +4,7 @@ import { getSession } from "@/auth/session";
 import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { Card } from "@/ui/card";
+import { EmptyState } from "@/ui/empty-state";
 import { ExportButtons } from "@/ui/export-buttons";
 import { SiteHeader } from "@/ui/site-header";
 
@@ -14,14 +15,21 @@ export default async function MyTicketsPage() {
   const home = await getServices().analytics.attendeeHome(session.user.id, session.user.email);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-        <Link href="/me" className="text-sm underline">
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+        <Link href="/me" className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
           {t.me.title}
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">{t.me.tickets}</h1>
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.me.tickets}</h1>
         <ExportButtons kind="attendee" label={t.dashboard.export} />
+        {home.tickets.length === 0 ? (
+          <EmptyState
+            title={t.emptyState.meTickets}
+            actionHref="/discover"
+            actionLabel={t.emptyState.discoverEvents}
+          />
+        ) : null}
         <ul className="grid gap-3">
           {home.tickets.map((ticket) => (
             <li key={ticket.registrationId}>

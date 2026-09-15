@@ -24,6 +24,7 @@ import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
 import { randomToken } from "@/lib/token-crypto";
+import { recordCheckoutFailed, recordCheckoutSucceeded } from "@/observability/events";
 
 export type PaymentNotifier = {
   notify: (input: { email: string; subject: string; body: string; kind: "refund" | "cancelled" }) => Promise<void>;
@@ -155,6 +156,7 @@ export function createPaymentService(deps: {
       organizationId: order.organizationId,
       data: { id: payment.id, orderId: order.id, eventId: order.eventId, amountCents: payment.amountCents },
     });
+    recordCheckoutSucceeded();
     return paid;
   }
 
@@ -166,6 +168,7 @@ export function createPaymentService(deps: {
     for (const registration of regs) {
       await deps.registrations.save({ ...registration, status: "cancelled", updatedAt: now });
     }
+    recordCheckoutFailed();
   }
 
   async function handleStripeWebhook(payload: string, signature: string) {

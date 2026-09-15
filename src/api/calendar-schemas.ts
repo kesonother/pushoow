@@ -24,6 +24,7 @@ export const calendarWriteSchema = z.object({
 
 export const createCalendarSchema = calendarWriteSchema.extend({
   name: z.string().min(2).max(120),
+  templateId: z.enum(["meetup"]).optional(),
 });
 
 export const followPreferencesSchema = z.object({

@@ -10,6 +10,7 @@ import type {
 import type { Calendar, CalendarRepository } from "@/domain/calendar/types";
 import { isListedEventStatus, type Event, type EventRepository } from "@/domain/event/types";
 import type { MembershipRepository } from "@/domain/organization/types";
+import { intlLocaleFor } from "@/i18n/config";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 
@@ -66,7 +67,7 @@ function visibleEvents(events: Event[], memberView: boolean, now: Date): Event[]
 
 export function groupEventsByMonth(events: Event[], locale: string, timeZone: string): MonthGroup[] {
   const groups = new Map<string, MonthGroup>();
-  const formatter = new Intl.DateTimeFormat(locale, {
+  const formatter = new Intl.DateTimeFormat(intlLocaleFor(locale), {
     month: "long",
     year: "numeric",
     timeZone,

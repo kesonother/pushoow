@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mapEmbedBbox } from "@/domain/event/geocoding";
+import { useI18n } from "@/i18n/client";
+import { formatEventDateTime } from "@/i18n/datetime";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { TEXT_OVERFLOW_CLASS } from "@/i18n/overflow";
 import { Button } from "@/ui/button";
-import { Card } from "@/ui/card";
+import { chipClassName } from "@/ui/control";
 import { Input } from "@/ui/input";
+import { SelectField } from "@/ui/select-field";
 
 type Labels = Dictionary["discover"];
 
@@ -28,6 +32,7 @@ type PublicCard = {
     latitude: number | null;
     longitude: number | null;
     capacity: number | null;
+    coverImageUrl: string | null;
   };
   calendarName: string;
   calendarSlug: string;
@@ -73,6 +78,7 @@ const FILTER_KEYS = [
   "country",
   "date",
   "dateFrom",
+  "dateTo",
   "tag",
   "category",
   "format",
@@ -111,27 +117,54 @@ function EventCard({
   selected?: boolean;
   onSelect?: (card: PublicCard) => void;
 }) {
+  const { locale } = useI18n();
+  const meta = (
+    <>
+      <h3 className={`text-[14px] font-bold text-[#171717] ${TEXT_OVERFLOW_CLASS}`}>{card.event.title}</h3>
+      <p className="mt-0.5 text-[12px] text-zinc-600">
+        {formatEventDateTime(new Date(card.event.startsAt), card.event.timezone, locale)}
+      </p>
+      <p className="mt-0.5 text-[12px] text-zinc-600">
+        {card.organizerName}
+        {card.event.city ? ` · ${card.event.city}` : ""}
+      </p>
+    </>
+  );
   return (
-    <Card className={selected ? "ring-2 ring-zinc-950" : ""}>
-      <button type="button" className="w-full text-left" onClick={() => onSelect?.(card)}>
-        <p className="text-xs uppercase tracking-wide text-zinc-500">{card.format}</p>
-        <h3 className="mt-1 text-lg font-semibold">{card.event.title}</h3>
-        <p className="mt-1 text-sm text-zinc-600">
-          {new Date(card.event.startsAt).toLocaleString(undefined, { timeZone: card.event.timezone })}
-        </p>
-        <p className="mt-1 text-sm text-zinc-600">
-          {card.organizerName}
-          {card.event.city ? ` · ${card.event.city}` : ""}
-        </p>
-      </button>
-      <Link className="mt-3 inline-block text-sm underline" href={`/e/${card.event.slug}`}>
-        {card.event.title}
-      </Link>
-    </Card>
+    <article>
+      <div
+        className={`flex gap-3 rounded-xl border border-[#E8E8E8] bg-white p-2.5 transition-colors hover:border-zinc-300 hover:bg-[#FAFAFA] ${selected ? "border-zinc-400 bg-[#FAFAFA]" : ""}`}
+      >
+        {card.event.coverImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={card.event.coverImageUrl} alt="" className="h-16 w-16 shrink-0 rounded-[10px] object-cover" />
+        ) : (
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[10px] bg-[#FAFAFA] text-[11px] font-medium text-zinc-600">
+            {card.format}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          {onSelect ? (
+            <button type="button" className="w-full min-h-11 text-start" aria-pressed={selected} onClick={() => onSelect(card)}>
+              {meta}
+            </button>
+          ) : (
+            meta
+          )}
+          <Link
+            className="mt-1 inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70"
+            href={`/e/${card.event.slug}`}
+          >
+            {card.event.title}
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 }
 
 export function DiscoverExplorer({ labels }: { labels: Labels }) {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<PublicCard[]>([]);
@@ -142,6 +175,8 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [intent, setIntent] = useState("");
+  const [intentHint, setIntentHint] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "map" | "both">("both");
   const sentinel = useRef<HTMLDivElement | null>(null);
   const queryKey = searchParams.toString();
@@ -270,6 +305,33 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
     });
   }
 
+  async function applyIntent() {
+    if (!intent.trim()) return;
+    setIntentHint(null);
+    const response = await fetch("/api/v1/discover/ai", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: intent }),
+    });
+    if (!response.ok) {
+      setError(labels.unavailable);
+      return;
+    }
+    const payload = await response.json();
+    const filters = payload.data?.interpretation?.filters ?? {};
+    replaceFilters({
+      q: filters.q,
+      city: filters.city,
+      tag: filters.tag,
+      format: filters.format,
+      price: filters.price,
+      location: filters.location,
+      dateFrom: typeof filters.dateFrom === "string" ? filters.dateFrom.slice(0, 10) : undefined,
+      dateTo: typeof filters.dateTo === "string" ? filters.dateTo.slice(0, 10) : undefined,
+    });
+    setIntentHint(labels.aiSuggestion);
+  }
+
   const sectionRows: Array<[keyof SectionsPayload, string]> = [
     ["trending", labels.trending],
     ["editorsPicks", labels.editorsPicks],
@@ -307,25 +369,19 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
         <Input name="tag" label={labels.tag} defaultValue={filters.tag} />
         <Input name="category" label={labels.category} defaultValue={filters.category} />
         <Input name="language" label={labels.language} defaultValue={filters.language} />
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
-          {labels.format}
-          <select name="format" defaultValue={filters.format ?? ""} className="min-h-11 rounded-lg border border-zinc-300 px-3">
-            <option value=""></option>
-            <option value="online">{labels.online}</option>
-            <option value="in-person">{labels.inPerson}</option>
-            <option value="hybrid">{labels.hybrid}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
-          {labels.price}
-          <select name="price" defaultValue={filters.price ?? ""} className="min-h-11 rounded-lg border border-zinc-300 px-3">
-            <option value=""></option>
-            <option value="free">{labels.free}</option>
-            <option value="under_25">{labels.under25}</option>
-            <option value="under_100">{labels.under100}</option>
-            <option value="paid">{labels.paid}</option>
-          </select>
-        </label>
+        <SelectField name="format" label={labels.format} defaultValue={filters.format ?? ""}>
+          <option value="">{t.common.none}</option>
+          <option value="online">{labels.online}</option>
+          <option value="in-person">{labels.inPerson}</option>
+          <option value="hybrid">{labels.hybrid}</option>
+        </SelectField>
+        <SelectField name="price" label={labels.price} defaultValue={filters.price ?? ""}>
+          <option value="">{t.common.none}</option>
+          <option value="free">{labels.free}</option>
+          <option value="under_25">{labels.under25}</option>
+          <option value="under_100">{labels.under100}</option>
+          <option value="paid">{labels.paid}</option>
+        </SelectField>
         <div className="flex flex-wrap items-end gap-2">
           <Button type="submit">{labels.filters}</Button>
           <Button type="button" variant="secondary" onClick={() => router.replace("/discover")}>
@@ -337,13 +393,33 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
         </div>
       </form>
 
+      <form
+        className="grid gap-3 sm:grid-cols-[1fr_auto]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          applyIntent().catch(() => setError(labels.unavailable));
+        }}
+      >
+        <Input
+          name="intent"
+          label={labels.intent}
+          value={intent}
+          onChange={(event) => setIntent(event.target.value)}
+          placeholder={labels.intentPlaceholder}
+        />
+        <div className="flex items-end">
+          <Button type="submit">{labels.intentApply}</Button>
+        </div>
+        {intentHint ? <p className="text-sm text-zinc-600 sm:col-span-2">{intentHint}</p> : null}
+      </form>
+
       {facets ? (
-        <div className="flex flex-wrap gap-2" aria-label={labels.filters}>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={labels.filters}>
           {facets.date.map((facet) => (
             <button
               key={`date-${facet.value}`}
               type="button"
-              className="rounded-full bg-zinc-100 px-3 py-1 text-sm"
+              className={chipClassName}
               onClick={() => replaceFilters({ date: facet.value, dateFrom: undefined })}
             >
               {formatLabel(facet.value, labels)} ({facet.count})
@@ -353,7 +429,7 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
             <button
               key={`city-${facet.value}`}
               type="button"
-              className="rounded-full bg-zinc-100 px-3 py-1 text-sm"
+              className={chipClassName}
               onClick={() => replaceFilters({ city: facet.value })}
             >
               {facet.value} ({facet.count})
@@ -363,37 +439,44 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
             <button
               key={`tag-${facet.value}`}
               type="button"
-              className="rounded-full bg-zinc-100 px-3 py-1 text-sm"
+              className={chipClassName}
               onClick={() => replaceFilters({ tag: facet.value })}
             >
               #{facet.value} ({facet.count})
             </button>
           ))}
           {facets.capacity.map((facet) => (
-            <span key={`capacity-${facet.value}`} className="rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-600">
+            <span key={`capacity-${facet.value}`} className="rounded-full border border-[#E8E8E8] px-3 py-1 text-sm text-zinc-600">
               {facet.value} ({facet.count})
             </span>
           ))}
         </div>
       ) : null}
 
-      <div className="flex gap-2">
-        <Button type="button" variant={view === "list" ? "primary" : "secondary"} onClick={() => setView("list")}>
+      <div className="flex gap-2" role="group" aria-label={labels.list}>
+        <Button type="button" variant={view === "list" ? "primary" : "secondary"} aria-pressed={view === "list"} onClick={() => setView("list")}>
           {labels.list}
         </Button>
-        <Button type="button" variant={view === "map" ? "primary" : "secondary"} onClick={() => setView("map")}>
+        <Button type="button" variant={view === "map" ? "primary" : "secondary"} aria-pressed={view === "map"} onClick={() => setView("map")}>
           {labels.map}
         </Button>
       </div>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p role="alert">
+          {error}{" "}
+          <Link className="underline" href="/calendars">
+            {t.emptyState.browseCalendars}
+          </Link>
+        </p>
+      ) : null}
 
       {sections && !queryKey ? (
         <div className="grid gap-6">
           {sectionRows.map(([key, title]) =>
             sections[key].length > 0 ? (
               <section key={key}>
-                <h2 className="mb-3 text-xl font-semibold">{title}</h2>
+                <h2 className="mb-3 text-[16px] font-bold tracking-tight text-[#171717]">{title}</h2>
                 <ul className="grid gap-3 sm:grid-cols-2">
                   {sections[key].map((card) => (
                     <li key={card.event.id}>
@@ -410,9 +493,16 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
       <div className={`grid gap-6 ${view === "both" ? "lg:grid-cols-2" : ""}`}>
         {view !== "map" ? (
           <section>
-            <h2 className="mb-3 text-xl font-semibold">{labels.list}</h2>
-            {loading && items.length === 0 ? <p>…</p> : null}
-            {items.length === 0 && !loading && !error ? <p>{labels.empty}</p> : null}
+            <h2 className="mb-3 text-[16px] font-bold tracking-tight text-[#171717]">{labels.list}</h2>
+            {loading && items.length === 0 ? <p>{t.common.loading}</p> : null}
+            {items.length === 0 && !loading && !error ? (
+              <p>
+                {labels.empty}{" "}
+                <Link className="underline" href="/calendars">
+                  {t.emptyState.browseCalendars}
+                </Link>
+              </p>
+            ) : null}
             <ul className="grid gap-3">
               {items.map((card) => (
                 <li key={card.event.id}>
@@ -435,9 +525,9 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
 
         {view !== "list" ? (
           <section>
-            <h2 className="mb-3 text-xl font-semibold">{labels.map}</h2>
+            <h2 className="mb-3 text-[16px] font-bold tracking-tight text-[#171717]">{labels.map}</h2>
             {embed ? (
-              <iframe title={labels.map} src={embed} className="h-72 w-full rounded-2xl border border-zinc-200" loading="lazy" />
+              <iframe title={labels.map} src={embed} className="h-72 w-full rounded-xl border border-[#E8E8E8]" loading="lazy" />
             ) : (
               <p>{labels.unlocated}</p>
             )}
@@ -447,7 +537,8 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
                   <li key={cluster.id}>
                     <button
                       type="button"
-                      className="rounded-full bg-zinc-100 px-3 py-1 text-sm"
+                      className={chipClassName}
+                      aria-label={`${labels.clusters}: ${cluster.count}`}
                       onClick={() => setSelectedId(cluster.eventIds[0] ?? null)}
                     >
                       {cluster.count}
@@ -458,14 +549,14 @@ export function DiscoverExplorer({ labels }: { labels: Labels }) {
             ) : null}
             {selected ? (
               <div className="mt-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">{labels.selected}</h3>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-600">{labels.selected}</h3>
                 <EventCard card={selected} selected />
                 <p className="mt-2 text-sm text-zinc-600">{formatPrice(selected.minPriceCents, labels)}</p>
               </div>
             ) : null}
             {map && map.unlocated.length > 0 ? (
               <div className="mt-6">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">{labels.unlocated}</h3>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-600">{labels.unlocated}</h3>
                 <ul className="grid gap-2">
                   {map.unlocated.slice(0, 8).map((card) => (
                     <li key={card.event.id}>

@@ -13,9 +13,9 @@ export default async function VerifyEmailPage() {
   const { t } = await getI18n();
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-12">
+      <main id="content" className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-12">
         <Card className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold">{t.auth.verifyTitle}</h1>
           <p className="text-zinc-600">{t.auth.verifyBody}</p>

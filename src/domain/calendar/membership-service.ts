@@ -20,6 +20,7 @@ import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
 import { cuidGenerator } from "@/lib/ids";
+import { recordCheckoutStarted } from "@/observability/events";
 
 export type MembershipNotifier = {
   notify: (input: {
@@ -342,6 +343,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
       body: "Your membership was approved. Checkout is ready — payment was not collected before approval.",
     });
 
+    recordCheckoutStarted();
     return { checkoutUrl: checkout.checkoutUrl, membership: updated };
   }
 

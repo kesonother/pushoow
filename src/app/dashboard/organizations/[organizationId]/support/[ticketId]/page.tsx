@@ -40,14 +40,14 @@ export default async function OrganizationSupportTicketPage({
   const attachments = messages.flatMap((item) => item.attachments);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
+      <main id="content" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
         <div>
-          <Link href={`/dashboard/organizations/${organizationId}/support`} className="text-sm underline">
+          <Link href={`/dashboard/organizations/${organizationId}/support`} className="inline-flex min-h-11 items-center text-[13px] font-medium text-zinc-600 transition-opacity hover:opacity-70">
             {t.dashboard.support}
           </Link>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          <h1 className="mt-2 text-[28px] font-extrabold tracking-tight text-[#111111]">
             {ticket.number} · {ticket.subject}
           </h1>
         </div>
@@ -75,8 +75,8 @@ export default async function OrganizationSupportTicketPage({
           <h2 className="mb-4 text-lg font-semibold">{t.dashboard.supportConversation}</h2>
           <ol className="flex flex-col gap-4">
             {messages.map((message) => (
-              <li key={message.id} className="rounded-xl border border-zinc-200 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <li key={message.id} className="rounded-xl border border-[#E8E8E8] p-4">
+                <p className="text-xs uppercase tracking-wide text-zinc-600">
                   {message.authorKind}
                   {message.visibility === "internal" ? ` · ${t.dashboard.supportInternal}` : ""} ·{" "}
                   {message.createdAt.toISOString()}
@@ -106,7 +106,7 @@ export default async function OrganizationSupportTicketPage({
                   <a href={file.url} className="underline">
                     {file.filename}
                   </a>{" "}
-                  <span className="text-zinc-500">({file.contentType})</span>
+                  <span className="text-zinc-600">({file.contentType})</span>
                 </li>
               ))}
             </ul>

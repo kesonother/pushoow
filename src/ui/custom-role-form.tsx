@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CUSTOM_GRANTS } from "@/domain/rbac/grants";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -14,6 +15,7 @@ export function CustomRoleForm({
   labels: { roleName: string; grants: string; createRole: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(formData: FormData) {
@@ -29,7 +31,7 @@ export function CustomRoleForm({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to create role");
+      setError(apiMessage(payload, t.errors.unableToCreateRole));
       return;
     }
     router.refresh();

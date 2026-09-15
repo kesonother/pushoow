@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 
 export function CalendarFollowPrefs({
   calendarId,
@@ -13,6 +14,7 @@ export function CalendarFollowPrefs({
   labels: { email: string; push: string; sms: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function update(key: "email" | "push" | "sms", value: boolean) {
@@ -24,7 +26,7 @@ export function CalendarFollowPrefs({
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      setError(payload?.error?.message ?? "Unable to update preferences");
+      setError(apiMessage(payload, t.errors.unableToUpdatePreferences));
       return;
     }
     router.refresh();
@@ -32,7 +34,7 @@ export function CalendarFollowPrefs({
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="sr-only">Notifications</legend>
+      <legend className="sr-only">{t.notifications.title}</legend>
       {(
         [
           ["email", labels.email, preferences.email],

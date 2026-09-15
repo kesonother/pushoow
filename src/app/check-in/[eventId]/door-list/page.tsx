@@ -45,11 +45,11 @@ export default async function DoorListPage({
   );
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <div className="print:hidden">
         <SiteHeader t={t} signedIn />
       </div>
-      <main id="content" className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+      <main id="content" className="mx-auto w-full max-w-2xl flex-1 px-6 py-8">
         <DoorList title={list.title} guests={guests} />
       </main>
     </div>

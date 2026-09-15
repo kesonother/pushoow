@@ -31,6 +31,12 @@ export const EMAIL_TEMPLATE_KEYS = [
   "billing_refund",
   "support_ticket_opened",
   "support_ticket_reply",
+  "welcome_day0",
+  "welcome_create_calendar",
+  "welcome_first_event",
+  "reengagement_inactive",
+  "feature_education",
+  "product_newsletter_optin",
 ] as const;
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number];
 
@@ -227,7 +233,11 @@ export function templateCategory(key: string): NotificationCategory {
     key === "billing_payment_failed" ||
     key === "billing_refund" ||
     key === "support_ticket_opened" ||
-    key === "support_ticket_reply"
+    key === "support_ticket_reply" ||
+    key === "welcome_day0" ||
+    key === "welcome_create_calendar" ||
+    key === "welcome_first_event" ||
+    key === "product_newsletter_optin"
   ) {
     return "transactional";
   }

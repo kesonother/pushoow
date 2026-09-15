@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 
 export function CalendarFollowButton({
@@ -18,6 +19,7 @@ export function CalendarFollowButton({
   labels: { follow: string; unfollow: string; login: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function CalendarFollowButton({
     setPending(false);
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      setError(payload?.error?.message ?? "Unable to update follow");
+      setError(apiMessage(payload, t.errors.unableToFollow));
       return;
     }
     router.refresh();

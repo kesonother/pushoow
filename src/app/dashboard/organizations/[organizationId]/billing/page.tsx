@@ -3,6 +3,7 @@ import { getSession } from "@/auth/session";
 import { requireFullDashboardActor } from "@/server/dashboard-access";
 import { DomainError } from "@/domain/errors";
 import { formatMoney } from "@/domain/payments/currencies";
+import { formatEventDate } from "@/i18n/datetime";
 import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { BillingPanel } from "@/ui/billing-panel";
@@ -19,7 +20,7 @@ export default async function OrganizationBillingPage({
   const session = await getSession();
   if (!session?.user) redirect("/login");
   const { organizationId } = await params;
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const services = getServices();
   let actor;
   let overview;
@@ -37,10 +38,10 @@ export default async function OrganizationBillingPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.dashboard.billingTitle}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.dashboard.billingTitle}</h1>
         <OrgNav organizationId={organizationId} actor={actor} labels={t.dashboard} />
         <Card>
           <p className="text-sm text-amber-800">{t.dashboard.billingPendingGrid}</p>
@@ -52,8 +53,9 @@ export default async function OrganizationBillingPage({
             {overview.subscription.pendingPlanId ? ` · ${overview.subscription.pendingPlanId}` : ""}
           </p>
           <p className="mb-6 text-sm text-zinc-600">
-            {t.dashboard.billingPeriod}: {overview.subscription.currentPeriodStart.toISOString().slice(0, 10)} →{" "}
-            {overview.subscription.currentPeriodEnd.toISOString().slice(0, 10)}
+            {t.dashboard.billingPeriod}: {formatEventDate(overview.subscription.currentPeriodStart, "UTC", locale)}{" "}
+            <span className="rtl-flip inline-block">→</span>{" "}
+            {formatEventDate(overview.subscription.currentPeriodEnd, "UTC", locale)}
           </p>
           <BillingPanel
             organizationId={organizationId}
@@ -87,7 +89,7 @@ export default async function OrganizationBillingPage({
               {overview.invoices.map((invoice) => (
                 <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-3">
                   <span>
-                    {invoice.number} · {invoice.status} · {formatMoney(invoice.totalCents, invoice.currency)}
+                    {invoice.number} · {invoice.status} · {formatMoney(invoice.totalCents, invoice.currency, locale)}
                   </span>
                   {invoice.status === "paid" ? (
                     <InvoiceRefundButton

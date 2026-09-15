@@ -18,6 +18,7 @@ import type { Event, EventRepository } from "@/domain/event/types";
 import { PaymentNotConfiguredError, type PaymentAdapter } from "@/domain/calendar/membership-types";
 import { unconfiguredPaymentAdapter } from "@/integrations/payments/unconfigured";
 import { checkoutIdempotencyKey } from "@/domain/payments/checkout";
+import { recordCheckoutFailed, recordCheckoutStarted } from "@/observability/events";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payments/fees";
 import { quotePayment, type PaymentQuote } from "@/domain/payments/quote";
 import type { PaymentService } from "@/domain/payments/service";
@@ -95,6 +96,7 @@ export type RegistrationServiceDeps = {
   accountAgeMs?: number | null;
   clock?: Clock;
   ids?: IdGenerator;
+  onRegistered?: (registration: EventRegistration) => Promise<void>;
 };
 
 function hashSecret(value: string): string {
@@ -278,6 +280,7 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
         organizationId: event.organizationId,
         data: { id: reserved.registration.id, eventId: event.id, status: reserved.registration.status },
       });
+      await deps.onRegistered?.(reserved.registration);
       return reserved.registration;
     }
 
@@ -612,7 +615,9 @@ export function createRegistrationService(deps: RegistrationServiceDeps) {
         checkoutUrl = checkout.checkoutUrl;
         paymentIntentId = checkout.paymentIntentId ?? null;
         status = "pending";
+        recordCheckoutStarted();
       } catch (error) {
+        recordCheckoutFailed();
         for (const registration of reservedRows) {
           await deps.registrations.save({ ...registration, status: "cancelled", updatedAt: clock.now() });
         }

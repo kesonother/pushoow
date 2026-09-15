@@ -31,10 +31,10 @@ export default async function EditEventPage({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.event.editEvent}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-6 py-8">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.event.editEvent}</h1>
         <Card>
           <EventWizard
             organizationId={organizationId}

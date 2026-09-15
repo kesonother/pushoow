@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SUPPORT_CHANNELS, TICKET_PRIORITIES } from "@/domain/support/types";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
+import { textareaClassName } from "@/ui/control";
 
 export function SupportTicketForm({
   organizationId,
@@ -20,6 +22,7 @@ export function SupportTicketForm({
   };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -39,7 +42,7 @@ export function SupportTicketForm({
     const payload = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to open ticket");
+      setError(apiMessage(payload, t.errors.unableToOpenTicket));
       return;
     }
     router.push(`/dashboard/organizations/${organizationId}/support/${payload.data.ticket.id}`);
@@ -51,12 +54,7 @@ export function SupportTicketForm({
       <Input name="subject" label={labels.subject} required minLength={3} maxLength={160} />
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900">
         {labels.message}
-        <textarea
-          name="body"
-          required
-          rows={5}
-          className="min-h-24 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-normal text-zinc-950 outline-none focus-visible:border-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-950/20"
-        />
+        <textarea name="body" required rows={5} className={textareaClassName} />
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900">
@@ -88,7 +86,11 @@ export function SupportTicketForm({
           </select>
         </label>
       </div>
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
       <Button type="submit" disabled={pending}>
         {labels.create}
       </Button>

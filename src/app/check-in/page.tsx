@@ -5,6 +5,7 @@ import { hasPermission } from "@/domain/rbac/permissions";
 import { getI18n } from "@/i18n/server";
 import { getServices } from "@/server/container";
 import { Card } from "@/ui/card";
+import { EmptyState } from "@/ui/empty-state";
 import { SiteHeader } from "@/ui/site-header";
 
 export default async function CheckInIndexPage() {
@@ -32,12 +33,16 @@ export default async function CheckInIndexPage() {
   events.sort((left, right) => right.startsAt.getTime() - left.startsAt.getTime());
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-white">
       <SiteHeader t={t} signedIn />
-      <main id="content" className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.checkin.title}</h1>
+      <main id="content" className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-6 py-8">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{t.checkin.title}</h1>
         {events.length === 0 ? (
-          <p className="text-zinc-600">{t.dashboard.empty}</p>
+          <EmptyState
+            title={t.emptyState.checkin}
+            actionHref={accessible[0] ? `/dashboard/organizations/${accessible[0].organization.id}/calendars` : "/dashboard"}
+            actionLabel={t.emptyState.createEvent}
+          />
         ) : (
           <ul className="grid gap-3">
             {events.map((event) => (

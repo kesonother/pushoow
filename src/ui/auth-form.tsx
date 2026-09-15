@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/auth/client";
 import type { OAuthProvider } from "@/auth/providers";
+import { useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { CaptchaFields, useCaptchaChallenge } from "@/ui/captcha-fields";
 import { Input } from "@/ui/input";
@@ -29,11 +30,17 @@ type AuthFormProps = {
 
 export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const captcha = useCaptchaChallenge();
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -59,7 +66,7 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
       );
       setPending(false);
       if (result.error) {
-        setError(result.error.message ?? "Unable to send magic link");
+        setError(result.error.message ?? t.errors.unableToSendMagicLink);
         return;
       }
       setMagicSent(true);
@@ -74,7 +81,7 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
     setPending(false);
 
     if (result.error) {
-      setError(result.error.message ?? "Authentication failed");
+      setError(result.error.message ?? t.errors.authFailed);
       return;
     }
 
@@ -84,18 +91,12 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={onSubmit} className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">{labels.title}</h1>
+      <form action={onSubmit} className="flex flex-col gap-4" aria-busy={pending || undefined}>
+        <h1 className="text-[28px] font-extrabold tracking-tight text-[#111111]">{labels.title}</h1>
         {mode === "register" && labels.name ? (
           <Input name="name" label={labels.name} autoComplete="name" minLength={2} />
         ) : null}
-        <Input
-          name="email"
-          type="email"
-          label={labels.email}
-          autoComplete="email"
-          required
-        />
+        <Input name="email" type="email" label={labels.email} autoComplete="email" required />
         {showPassword ? (
           <Input
             name="password"
@@ -108,7 +109,7 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
         ) : null}
         <CaptchaFields challenge={captcha} label={labels.captcha} />
         {error ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p ref={errorRef} role="alert" tabIndex={-1} className="text-sm text-red-800">
             {error}
           </p>
         ) : null}
@@ -125,18 +126,14 @@ export function AuthForm({ mode, labels, oauthProviders }: AuthFormProps) {
             {labels.submit}
           </Button>
         ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setShowPassword(true)}
-          >
+          <Button type="button" variant="ghost" onClick={() => setShowPassword(true)}>
             {labels.optionalPassword}
           </Button>
         )}
       </form>
       {oauthProviders.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-center text-sm text-zinc-500">{labels.or}</p>
+          <p className="text-center text-sm text-zinc-600">{labels.or}</p>
           {oauthProviders.map((provider) => (
             <Button
               key={provider}

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -14,17 +15,32 @@ export function EventWizard({
   calendarId,
   eventId,
   labels,
+  initial,
 }: {
   organizationId: string;
   calendarId: string;
   eventId?: string;
   labels: Record<string, string>;
+  initial?: Partial<{
+    title: string;
+    description: string;
+    startsAt: string;
+    endsAt: string;
+    templateId: string;
+    tags: string;
+    locationKind: string;
+    registrationMode: string;
+    capacity: string;
+  }>;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [step, setStep] = useState<(typeof STEPS)[number]>("basics");
   const [id, setId] = useState(eventId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [persona, setPersona] = useState<"neutral" | "casual" | "corporate" | "academic">("neutral");
+  const [aiHint, setAiHint] = useState<string | null>(null);
   const [geo, setGeo] = useState<
     Array<{
       address: string;
@@ -36,13 +52,13 @@ export function EventWizard({
     }>
   >([]);
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    startsAt: "",
-    endsAt: "",
+    title: initial?.title ?? "",
+    description: initial?.description ?? "",
+    startsAt: initial?.startsAt ?? "",
+    endsAt: initial?.endsAt ?? "",
     timezone: "Europe/Paris",
-    templateId: "",
-    locationKind: "physical",
+    templateId: initial?.templateId ?? "",
+    locationKind: initial?.locationKind ?? "physical",
     venueName: "",
     venueAddress: "",
     virtualUrl: "",
@@ -51,12 +67,12 @@ export function EventWizard({
     coverImageUrl: "",
     latitude: "",
     longitude: "",
-    registrationMode: "open_rsvp",
+    registrationMode: initial?.registrationMode ?? "open_rsvp",
     rosterMode: "hidden",
     registrationPassword: "",
     allowedEmailDomains: "",
     accessToken: "",
-    capacity: "",
+    capacity: initial?.capacity ?? "",
     waitlistEnabled: true,
     waitlistDuringPresale: false,
     isPaid: false,
@@ -64,7 +80,7 @@ export function EventWizard({
     country: "",
     category: "",
     language: "",
-    tags: "",
+    tags: initial?.tags ?? "",
   });
 
   useEffect(() => {
@@ -120,6 +136,33 @@ export function EventWizard({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  async function generateDescription() {
+    setError(null);
+    setAiHint(null);
+    const format =
+      form.locationKind === "virtual" ? "online" : form.locationKind === "hybrid" ? "hybrid" : "in-person";
+    const location = [form.city, form.venueName, form.venueAddress].filter(Boolean).join(", ") || null;
+    const response = await fetch(`/api/v1/organizations/${organizationId}/ai/descriptions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: form.title,
+        tags: form.tags.split(",").map((item) => item.trim()).filter(Boolean),
+        location,
+        format,
+        persona,
+      }),
+    });
+    if (!response.ok) {
+      setError(labels.aiGenerated);
+      return;
+    }
+    const payload = await response.json();
+    const markdown = String(payload.data?.markdown ?? "");
+    if (markdown) patch("description", markdown);
+    setAiHint(labels.aiGenerated);
+  }
+
   async function save(nextStep = step, publish = false) {
     setError(null);
     const response = await fetch(`/api/v1/calendars/${calendarId}/events/wizard`, {
@@ -168,7 +211,7 @@ export function EventWizard({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to save");
+      setError(apiMessage(payload, t.errors.unableToSave));
       return null;
     }
     setId(payload.data.id);
@@ -194,10 +237,10 @@ export function EventWizard({
           return;
         }
         const saved = await save("review", true);
-        if (saved) router.push(`/e/${saved.slug}`);
+        if (saved) router.push(`/e/${saved.slug}?onboarding=share`);
       }}
     >
-      <ol className="grid grid-cols-4 gap-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <ol className="grid grid-cols-4 gap-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-600">
         {STEPS.map((item) => (
           <li key={item} className={item === step ? "text-zinc-950" : ""}>
             {labels[item]}
@@ -231,6 +274,25 @@ export function EventWizard({
               onChange={(e) => patch("description", e.target.value)}
             />
           </label>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              {labels.persona}
+              <select
+                className="min-h-11 rounded-lg border border-zinc-300 px-3"
+                value={persona}
+                onChange={(e) => setPersona(e.target.value as typeof persona)}
+              >
+                <option value="neutral">{labels.personaNeutral}</option>
+                <option value="casual">{labels.personaCasual}</option>
+                <option value="corporate">{labels.personaCorporate}</option>
+                <option value="academic">{labels.personaAcademic}</option>
+              </select>
+            </label>
+            <Button type="button" variant="secondary" onClick={() => generateDescription()} disabled={!form.title}>
+              {labels.generateDescription}
+            </Button>
+          </div>
+          {aiHint ? <p className="text-sm text-zinc-600">{aiHint}</p> : null}
           <Input label={labels.startsAt} type="datetime-local" value={form.startsAt} onChange={(e) => patch("startsAt", e.target.value)} />
           <Input label={labels.endsAt} type="datetime-local" value={form.endsAt} onChange={(e) => patch("endsAt", e.target.value)} />
           <Input label={labels.timezone} value={form.timezone} onChange={(e) => patch("timezone", e.target.value)} />
@@ -250,9 +312,9 @@ export function EventWizard({
               value={form.locationKind}
               onChange={(e) => patch("locationKind", e.target.value)}
             >
-              <option value="physical">Physical</option>
-              <option value="virtual">Virtual</option>
-              <option value="hybrid">Hybrid</option>
+              <option value="physical">{labels.locationPhysical}</option>
+              <option value="virtual">{labels.locationVirtual}</option>
+              <option value="hybrid">{labels.locationHybrid}</option>
             </select>
           </label>
           {form.locationKind !== "virtual" ? (
@@ -268,7 +330,7 @@ export function EventWizard({
                 <button
                   key={`${item.latitude}-${item.longitude}`}
                   type="button"
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm"
+                  className="rounded-lg border border-[#E8E8E8] px-3 py-2 text-start text-sm"
                   onClick={() => {
                     patch("venueAddress", item.address);
                     patch("latitude", String(item.latitude));
@@ -308,12 +370,12 @@ export function EventWizard({
               value={form.registrationMode}
               onChange={(e) => patch("registrationMode", e.target.value)}
             >
-              <option value="open_rsvp">Open RSVP</option>
-              <option value="approval">Approval</option>
-              <option value="invitation">Invitation</option>
-              <option value="password">Password</option>
-              <option value="email_domain">Email domain</option>
-              <option value="token">Token</option>
+              <option value="open_rsvp">{labels.modeOpenRsvp}</option>
+              <option value="approval">{labels.modeApproval}</option>
+              <option value="invitation">{labels.modeInvitation}</option>
+              <option value="password">{labels.modePassword}</option>
+              <option value="email_domain">{labels.modeEmailDomain}</option>
+              <option value="token">{labels.modeToken}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -323,10 +385,10 @@ export function EventWizard({
               value={form.rosterMode}
               onChange={(e) => patch("rosterMode", e.target.value)}
             >
-              <option value="hidden">hidden</option>
-              <option value="visible">visible</option>
-              <option value="anonymized">anonymized</option>
-              <option value="approval_only">approval_only</option>
+              <option value="hidden">{labels.rosterHiddenOption}</option>
+              <option value="visible">{labels.rosterVisibleOption}</option>
+              <option value="anonymized">{labels.rosterAnonymizedOption}</option>
+              <option value="approval_only">{labels.rosterApprovalOnlyOption}</option>
             </select>
           </label>
           {form.registrationMode === "password" ? (
@@ -389,7 +451,7 @@ export function EventWizard({
         <Button type="submit">{step === "review" ? labels.publish : labels.next}</Button>
       </div>
       {id ? (
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-600">
           {labels.resume} {organizationId}/{id}
         </p>
       ) : null}

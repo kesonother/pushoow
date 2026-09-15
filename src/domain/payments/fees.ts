@@ -3,5 +3,5 @@ export const DEFAULT_PLATFORM_FEE_BPS = 250;
 
 export function platformFeeCents(merchandiseCents: number, feeBps = DEFAULT_PLATFORM_FEE_BPS): number {
   if (merchandiseCents <= 0 || feeBps <= 0) return 0;
-  return Math.floor((merchandiseCents * feeBps) / 10_000);
+  return Number((BigInt(merchandiseCents) * BigInt(feeBps)) / BigInt(10_000));
 }

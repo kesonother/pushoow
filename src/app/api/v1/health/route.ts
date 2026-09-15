@@ -1,14 +1,7 @@
 import { withApi, jsonOk } from "@/api/handler";
+import { liveness, publicLivenessPayload } from "@/observability/health";
 
 export const GET = withApi(
-  async ({ requestId }) =>
-    jsonOk(
-      {
-        status: "ok",
-        service: "pushoow",
-        time: new Date().toISOString(),
-      },
-      { requestId },
-    ),
+  async ({ requestId }) => jsonOk(publicLivenessPayload(await liveness()), { requestId }),
   { auth: "none" },
 );

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -13,6 +14,7 @@ export function AgencyClientForm({
   labels: { createClient: string; name: string; convertAgency: string; isAgency: boolean };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   async function convert() {
@@ -22,7 +24,7 @@ export function AgencyClientForm({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to convert");
+      setError(apiMessage(payload, t.errors.unableToConvert));
       return;
     }
     router.refresh();
@@ -37,7 +39,7 @@ export function AgencyClientForm({
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error?.message ?? "Unable to create client");
+      setError(apiMessage(payload, t.errors.unableToCreateClient));
       return;
     }
     router.refresh();

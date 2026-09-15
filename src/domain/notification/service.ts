@@ -30,6 +30,7 @@ import {
   type WhatsAppTemplateKey,
 } from "@/domain/notification/types";
 import { ProviderFailureError as ProviderFailed, ProviderNotConfiguredError } from "@/domain/notification/types";
+import { recordEmailAttempt, recordEmailFailed, recordEmailSucceeded } from "@/observability/events";
 import type { Clock } from "@/lib/clock";
 import { systemClock } from "@/lib/clock";
 import type { IdGenerator } from "@/lib/ids";
@@ -181,6 +182,7 @@ export function createNotificationService(deps: {
     if (!provider.isConfigured()) throw new ProviderNotConfiguredError(input.channel);
 
     try {
+      if (input.channel === "email") recordEmailAttempt();
       const result = await provider.send({
         channel: input.channel,
         to,
@@ -191,6 +193,7 @@ export function createNotificationService(deps: {
         headers,
         idempotencyKey: input.idempotencyKey,
       });
+      if (input.channel === "email") recordEmailSucceeded();
       return deps.deliveries.create({
         id: ids.id(),
         userId: input.userId ?? null,
@@ -210,6 +213,7 @@ export function createNotificationService(deps: {
         createdAt: now,
       });
     } catch (error) {
+      if (input.channel === "email" && !(error instanceof ProviderNotConfiguredError)) recordEmailFailed();
       if (error instanceof ProviderNotConfiguredError) throw error;
       throw error instanceof Error ? new ProviderFailed(input.channel, error.message) : new ProviderFailed(input.channel);
     }

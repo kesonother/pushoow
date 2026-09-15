@@ -3,6 +3,7 @@ import { createCalendarSchema } from "@/api/calendar-schemas";
 import { jsonOk, readJson, withApi } from "@/api/handler";
 import { paginateById, parsePageQuery } from "@/api/pagination";
 import { writeAuditLog } from "@/db/audit";
+import { applyCalendarTemplate } from "@/domain/onboarding/templates";
 import { getServices } from "@/server/container";
 
 type RouteContext = {
@@ -27,7 +28,7 @@ export const POST = (request: Request, context: RouteContext) =>
       const body = createCalendarSchema.parse(await readJson(request));
       const services = getServices();
       const actor = await resolveActor(services.access, user!.id, organizationId);
-      const calendar = await services.calendars.createCalendar(actor, body);
+      const calendar = await services.calendars.createCalendar(actor, applyCalendarTemplate(body));
 
       await writeAuditLog(services.db, {
         organizationId: actor.organizationId,

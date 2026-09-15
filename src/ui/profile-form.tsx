@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiMessage, useI18n } from "@/i18n/client";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
@@ -48,6 +49,7 @@ export function ProfileForm({
     showSocial: string;
   };
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
@@ -84,7 +86,7 @@ export function ProfileForm({
     setPending(false);
     if (!response.ok) {
       const payload = await response.json();
-      setError(payload.error?.message ?? "Unable to save profile");
+      setError(apiMessage(payload, t.errors.unableToSaveProfile));
       return;
     }
     setSaved(true);

@@ -11,6 +11,7 @@ export const CUSTOM_GRANTS = [
   "checkin",
   "view_audit",
   "manage_support",
+  "use_ai",
 ] as const;
 
 export type CustomGrant = (typeof CUSTOM_GRANTS)[number];
@@ -47,6 +48,7 @@ export const GRANT_PERMISSIONS: Record<CustomGrant, readonly Permission[]> = {
   checkin: ["organization:read", "checkin:manage", "registrants:read"],
   view_audit: ["organization:read", "audit:read", "exports:create"],
   manage_support: ["organization:read", "support:read", "support:write", "support:manage"],
+  use_ai: ["organization:read", "ai:use", "ai:read"],
 };
 
 export function permissionsFromGrants(grants: CustomGrant[]): Permission[] {

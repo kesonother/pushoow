@@ -23,6 +23,7 @@ export type FollowServiceDeps = {
   orgMembers: MembershipRepository;
   clock?: Clock;
   ids?: IdGenerator;
+  onFollowed?: (follower: CalendarFollower) => Promise<void>;
 };
 
 const defaultPreferences = (): NotificationPreferences => ({
@@ -65,7 +66,7 @@ export function createFollowService(deps: FollowServiceDeps) {
     }
 
     const now = clock.now();
-    return deps.followers.create({
+    const follower = await deps.followers.create({
       id: ids.id(),
       organizationId: calendar.organizationId,
       calendarId: calendar.id,
@@ -74,6 +75,8 @@ export function createFollowService(deps: FollowServiceDeps) {
       createdAt: now,
       updatedAt: now,
     });
+    await deps.onFollowed?.(follower);
+    return follower;
   }
 
   async function unfollow(userId: string, calendarId: string): Promise<void> {
