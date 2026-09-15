@@ -7692,7 +7692,7 @@
         },
         "plan": {
           "name": "plan",
-          "type": "analytics_plan",
+          "type": "analytics_plan_tier",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -11294,8 +11294,8 @@
         "sync"
       ]
     },
-    "public.analytics_plan": {
-      "name": "analytics_plan",
+    "public.analytics_plan_tier": {
+      "name": "analytics_plan_tier",
       "schema": "public",
       "values": [
         "free",

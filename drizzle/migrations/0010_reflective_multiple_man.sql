@@ -1,9 +1,9 @@
-CREATE TYPE "public"."analytics_plan" AS ENUM('free', 'pro', 'plus');--> statement-breakpoint
+CREATE TYPE "public"."analytics_plan_tier" AS ENUM('free', 'pro', 'plus');--> statement-breakpoint
 CREATE TYPE "public"."analytics_scope" AS ENUM('organization', 'event');--> statement-breakpoint
 CREATE TYPE "public"."registration_source" AS ENUM('direct', 'checkout', 'walk_in', 'import', 'search');--> statement-breakpoint
 CREATE TABLE "analytics_plan" (
 	"organization_id" text PRIMARY KEY NOT NULL,
-	"plan" "analytics_plan" DEFAULT 'free' NOT NULL,
+	"plan" "analytics_plan_tier" DEFAULT 'free' NOT NULL,
 	"updated_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint

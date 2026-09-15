@@ -4,7 +4,7 @@ import { event } from "@/db/schema/events";
 import { eventRegistration } from "@/db/schema/event-commerce";
 import type { AnalyticsPlan, RegistrationSource } from "@/domain/analytics/types";
 
-export const analyticsPlanEnum = pgEnum("analytics_plan", ["free", "pro", "plus"]);
+export const analyticsPlanEnum = pgEnum("analytics_plan_tier", ["free", "pro", "plus"]);
 export const analyticsScopeEnum = pgEnum("analytics_scope", ["organization", "event"]);
 export const registrationSourceEnum = pgEnum("registration_source", [
   "direct",
